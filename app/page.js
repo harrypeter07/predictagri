@@ -1,29 +1,46 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Navigation from './components/Navigation'
+import Link from 'next/link'
 
 export default function Home() {
   const [predictions, setPredictions] = useState([])
+  const [regions, setRegions] = useState([])
+  const [crops, setCrops] = useState([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
-  // Fetch predictions on component mount
+  // Fetch data on component mount
   useEffect(() => {
-    fetchPredictions()
+    fetchData()
   }, [])
 
-  const fetchPredictions = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('/api/predictions')
-      const data = await response.json()
-      if (response.ok) {
-        setPredictions(data)
-      } else {
-        setError('Failed to fetch predictions')
+      const [predictionsRes, regionsRes, cropsRes] = await Promise.all([
+        fetch('/api/predictions'),
+        fetch('/api/regions'),
+        fetch('/api/crops')
+      ])
+
+      if (predictionsRes.ok) {
+        const predictionsData = await predictionsRes.json()
+        setPredictions(predictionsData)
+      }
+
+      if (regionsRes.ok) {
+        const regionsData = await regionsRes.json()
+        setRegions(regionsData)
+      }
+
+      if (cropsRes.ok) {
+        const cropsData = await cropsRes.json()
+        setCrops(cropsData)
       }
     } catch (err) {
-      setError('Error fetching predictions')
+      setError('Error fetching data')
     }
   }
 
@@ -63,7 +80,7 @@ export default function Home() {
       if (response.ok) {
         setResult(data)
         // Refresh predictions list
-        fetchPredictions()
+        fetchData()
       } else {
         setError(data.error || 'Failed to generate prediction')
       }
@@ -75,97 +92,150 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">PredictAgri</h1>
-          <p className="text-lg text-gray-600">Agriculture Crop Yield Prediction System</p>
-        </header>
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      
+      <div className="py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <header className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">🌱 PredictAgri Dashboard</h1>
+            <p className="text-lg text-gray-600">Agriculture Crop Yield Prediction System</p>
+          </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Prediction Generator */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold mb-4">Generate Prediction</h2>
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Link href="/predictions" className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg text-center transition-colors">
+              <div className="text-3xl mb-2">📊</div>
+              <h3 className="font-semibold">Generate Predictions</h3>
+              <p className="text-sm opacity-90">Create new crop yield predictions</p>
+            </Link>
             
-            <button
-              onClick={generateMockPrediction}
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-            >
-              {loading ? 'Generating...' : 'Generate Mock Prediction'}
-            </button>
+            <Link href="/regions" className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg text-center transition-colors">
+              <div className="text-3xl mb-2">🗺️</div>
+              <h3 className="font-semibold">Manage Regions</h3>
+              <p className="text-sm opacity-90">Add and manage agricultural regions</p>
+            </Link>
+            
+            <Link href="/crops" className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg text-center transition-colors">
+              <div className="text-3xl mb-2">🌾</div>
+              <h3 className="font-semibold">Manage Crops</h3>
+              <p className="text-sm opacity-90">Add and manage crop types</p>
+            </Link>
+            
+            <div className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg text-center transition-colors cursor-pointer" onClick={generateMockPrediction}>
+              <div className="text-3xl mb-2">⚡</div>
+              <h3 className="font-semibold">Quick Test</h3>
+              <p className="text-sm opacity-90">Generate a test prediction</p>
+            </div>
+          </div>
 
-            {error && (
-              <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          {result && (
+            <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded">
+              <h3 className="font-semibold text-green-800 mb-2">✅ Test Prediction Generated!</h3>
+              <div className="space-y-1 text-sm text-green-700">
+                <p><strong>Yield:</strong> {result.yield?.toFixed(2)} units</p>
+                <p><strong>Risk Score:</strong> {(result.risk_score * 100).toFixed(1)}%</p>
+                <p><strong>Created:</strong> {new Date(result.created_at).toLocaleString()}</p>
               </div>
-            )}
+            </div>
+          )}
 
-            {result && (
-              <div className="mt-4 p-4 bg-green-100 border border-green-400 rounded">
-                <h3 className="font-semibold text-green-800 mb-2">Prediction Generated!</h3>
-                <div className="space-y-1 text-sm text-green-700">
-                  <p><strong>Yield:</strong> {result.yield?.toFixed(2)} units</p>
-                  <p><strong>Risk Score:</strong> {(result.risk_score * 100).toFixed(1)}%</p>
-                  <p><strong>Created:</strong> {new Date(result.created_at).toLocaleString()}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Recent Predictions */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-semibold">Recent Predictions</h2>
+                <Link href="/predictions" className="text-blue-600 hover:text-blue-800 text-sm">
+                  View All →
+                </Link>
+              </div>
+              
+              {predictions.length === 0 ? (
+                <p className="text-gray-500">No predictions yet. Generate one to see results!</p>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {predictions.slice(0, 5).map((prediction) => (
+                    <div key={prediction.id} className="border border-gray-200 rounded p-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">
+                            {prediction.crops?.name || 'Unknown Crop'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {prediction.regions?.name || 'Unknown Region'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-green-600">
+                            {prediction.yield?.toFixed(1)} yield
+                          </p>
+                          <p className="text-sm text-red-600">
+                            {(prediction.risk_score * 100).toFixed(1)}% risk
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(prediction.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* System Status */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-2xl font-semibold mb-4">System Status</h2>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                  <span className="font-medium">Total Predictions</span>
+                  <span className="text-2xl font-bold text-blue-600">{predictions.length}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                  <span className="font-medium">Regions Available</span>
+                  <span className="text-2xl font-bold text-green-600">{regions.length}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
+                  <span className="font-medium">Crops Supported</span>
+                  <span className="text-2xl font-bold text-purple-600">{crops.length}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-orange-50 rounded">
+                  <span className="font-medium">Database Status</span>
+                  <span className="text-green-600 font-semibold">✅ Connected</span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Recent Predictions */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold mb-4">Recent Predictions</h2>
-            
-            {predictions.length === 0 ? (
-              <p className="text-gray-500">No predictions yet. Generate one to see results!</p>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {predictions.map((prediction) => (
-                  <div key={prediction.id} className="border border-gray-200 rounded p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">
-                          {prediction.crops?.name || 'Unknown Crop'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {prediction.regions?.name || 'Unknown Region'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">
-                          {prediction.yield?.toFixed(1)} yield
-                        </p>
-                        <p className="text-sm text-red-600">
-                          {(prediction.risk_score * 100).toFixed(1)}% risk
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(prediction.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
+          {/* Setup Instructions */}
+          <div className="mt-8 bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-2xl font-semibold mb-4">🚀 Getting Started</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold text-lg mb-2">1. Add Sample Data</h3>
+                <p className="text-gray-600 mb-3">Start by adding regions and crops to your database:</p>
+                <div className="space-y-2">
+                  <Link href="/regions" className="block text-blue-600 hover:text-blue-800">
+                    → Add Regions (with mock data)
+                  </Link>
+                  <Link href="/crops" className="block text-blue-600 hover:text-blue-800">
+                    → Add Crops (with mock data)
+                  </Link>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Database Status */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-semibold mb-4">Database Status</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded">
-              <p className="text-2xl font-bold text-blue-600">{predictions.length}</p>
-              <p className="text-sm text-gray-600">Total Predictions</p>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded">
-              <p className="text-2xl font-bold text-green-600">5</p>
-              <p className="text-sm text-gray-600">Regions Available</p>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded">
-              <p className="text-2xl font-bold text-purple-600">8</p>
-              <p className="text-sm text-gray-600">Crops Supported</p>
+              <div>
+                <h3 className="font-semibold text-lg mb-2">2. Generate Predictions</h3>
+                <p className="text-gray-600 mb-3">Create predictions using the advanced interface:</p>
+                <Link href="/predictions" className="block text-blue-600 hover:text-blue-800">
+                  → Go to Predictions Page
+                </Link>
+              </div>
             </div>
           </div>
         </div>
