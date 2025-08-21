@@ -20,7 +20,7 @@ export default function Navigation() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
               <span className="text-2xl">🌱</span>
-              <span className="text-xl font-bold text-gray-900">PredictAgri</span>
+              <span className="text-xl font-bold text-gray-900">PredictAgrii</span>
             </Link>
           </div>
           
