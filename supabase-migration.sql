@@ -1,6 +1,12 @@
 -- PredictAgri Database Schema Migration
 -- Run this in Supabase SQL Editor
 
+-- Drop existing tables if they exist (in correct order due to foreign keys)
+DROP TABLE IF EXISTS alerts CASCADE;
+DROP TABLE IF EXISTS predictions CASCADE;
+DROP TABLE IF EXISTS crops CASCADE;
+DROP TABLE IF EXISTS regions CASCADE;
+
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -27,7 +33,7 @@ CREATE TABLE crops (
 -- 3. Predictions table
 CREATE TABLE predictions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id),
+    user_id TEXT, -- Changed from UUID REFERENCES auth.users(id) to TEXT for demo purposes
     crop_id UUID REFERENCES crops(id) NOT NULL,
     region_id UUID REFERENCES regions(id) NOT NULL,
     features JSONB NOT NULL, -- store input features

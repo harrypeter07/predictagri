@@ -23,7 +23,7 @@ export async function POST(request) {
     const { data, error } = await supabase
       .from('predictions')
       .insert({
-        user_id: userId || null,
+        user_id: userId || null, // Allow null or string user_id
         crop_id: cropId,
         region_id: regionId,
         features: features,
@@ -36,7 +36,7 @@ export async function POST(request) {
     if (error) {
       console.error('Supabase error:', error)
       return NextResponse.json(
-        { error: 'Failed to create prediction' },
+        { error: 'Failed to create prediction', details: error.message },
         { status: 500 }
       )
     }
