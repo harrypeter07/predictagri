@@ -5,11 +5,13 @@
 ## ✨ **Core Features**
 
 ### 🌾 **Crop Yield Prediction System**
+- **ONNX Machine Learning Model** for accurate yield predictions
 - **Advanced ML-based predictions** with real-time environmental data
 - **Multi-factor analysis** including soil composition, weather, and satellite data
 - **Risk assessment** with comprehensive scoring algorithms
 - **Bulk prediction generation** for testing multiple scenarios
 - **Historical prediction tracking** with performance analytics
+- **Client-side inference** using WebAssembly for privacy and performance
 
 ### 🛰️ **Satellite Data & Earth Observation**
 - **Google Earth Engine Integration** for comprehensive satellite data

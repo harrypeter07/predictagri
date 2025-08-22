@@ -156,6 +156,12 @@ export default function Home() {
                 <h3 className="font-semibold">Real-Time Prediction</h3>
                 <p className="text-sm opacity-90">Generate prediction using your location</p>
               </div>
+              
+              <Link href="/onnx-test" className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg text-center transition-colors border border-purple-500">
+                <div className="text-3xl mb-2">🤖</div>
+                <h3 className="font-semibold">ONNX Model Test</h3>
+                <p className="text-sm opacity-90">Test the machine learning model directly</p>
+              </Link>
             </div>
 
             {error && (
