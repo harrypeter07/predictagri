@@ -10,6 +10,7 @@ import {
   WeatherAlertSystem 
 } from '../components/Charts'
 import SatelliteDataDashboard from '../components/SatelliteDataDashboard'
+import ImageAnalysisDashboard from '../components/ImageAnalysisDashboard'
 
 export default function PredictionsPage() {
   const [predictions, setPredictions] = useState([])
@@ -284,6 +285,12 @@ export default function PredictionsPage() {
                      </div>
                    </div>
                  </div>
+               </div>
+
+               {/* Image Analysis Dashboard */}
+               <div className="mb-8">
+                 <h2 className="text-2xl font-semibold text-white mb-6 text-center">🔍 AI-Powered Image Analysis</h2>
+                 <ImageAnalysisDashboard regions={regions} crops={crops} />
                </div>
 
         {/* Predictions List */}
