@@ -9,6 +9,7 @@ import {
   ProductivityZoneMap, 
   WeatherAlertSystem 
 } from '../components/Charts'
+import SatelliteDataDashboard from '../components/SatelliteDataDashboard'
 
 export default function PredictionsPage() {
   const [predictions, setPredictions] = useState([])
@@ -239,10 +240,51 @@ export default function PredictionsPage() {
           </div>
         </div>
 
-        {/* Weather Alert System */}
-        <div className="mb-8">
-          <WeatherAlertSystem predictions={predictions} />
-        </div>
+                       {/* Weather Alert System */}
+               <div className="mb-8">
+                 <WeatherAlertSystem predictions={predictions} />
+               </div>
+               
+               {/* Satellite Data Dashboard */}
+               <div className="mb-8">
+                 <h2 className="text-2xl font-semibold text-white mb-6 text-center">🛰️ Satellite Data Analysis</h2>
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   <SatelliteDataDashboard region={regions[0]} />
+                   <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+                     <h3 className="text-xl font-semibold text-white mb-4">📡 Satellite Data Benefits</h3>
+                     <div className="space-y-3 text-gray-300">
+                       <div className="flex items-start space-x-3">
+                         <span className="text-green-400 text-lg">🌱</span>
+                         <div>
+                           <p className="font-medium text-white">NDVI Analysis</p>
+                           <p className="text-sm text-gray-400">Monitor vegetation health and growth patterns</p>
+                         </div>
+                       </div>
+                       <div className="flex items-start space-x-3">
+                         <span className="text-red-400 text-lg">🌡️</span>
+                         <div>
+                           <p className="font-medium text-white">Land Surface Temperature</p>
+                           <p className="text-sm text-gray-400">Track thermal stress and irrigation needs</p>
+                         </div>
+                       </div>
+                       <div className="flex items-start space-x-3">
+                         <span className="text-blue-400 text-lg">💧</span>
+                         <div>
+                           <p className="font-medium text-white">Soil Moisture</p>
+                           <p className="text-sm text-sm text-gray-400">Monitor water content and drought conditions</p>
+                         </div>
+                       </div>
+                       <div className="flex items-start space-x-3">
+                         <span className="text-purple-400 text-lg">📊</span>
+                         <div>
+                           <p className="font-medium text-white">Real-time Monitoring</p>
+                           <p className="text-sm text-gray-400">Get up-to-date satellite data for informed decisions</p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
 
         {/* Predictions List */}
         <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
