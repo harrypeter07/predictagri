@@ -1,22 +1,5 @@
 import { NextResponse } from 'next/server'
-import { imageProcessingService } from '../../../lib/imageProcessingService'
-import multer from 'multer'
-
-// Configure multer for file uploads
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/tiff']
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true)
-    } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, BMP, and TIFF are allowed.'), false)
-    }
-  }
-})
+import imageProcessingService from '../../../lib/imageProcessingService'
 
 // POST: Analyze agricultural image
 export async function POST(request) {

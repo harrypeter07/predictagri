@@ -10,7 +10,8 @@ export default function Navigation() {
     { href: '/', label: 'Dashboard', icon: '🏠' },
     { href: '/regions', label: 'Regions', icon: '🗺️' },
     { href: '/crops', label: 'Crops', icon: '🌾' },
-    { href: '/predictions', label: 'Predictions', icon: '📊' }
+    { href: '/predictions', label: 'Predictions', icon: '📊' },
+    { href: '/image-analysis', label: 'Image Analysis', icon: '🔍' }
   ]
 
   return (
