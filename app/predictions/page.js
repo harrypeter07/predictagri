@@ -7,7 +7,11 @@ import {
   RegionalPerformanceChart, 
   CropDistributionChart, 
   ProductivityZoneMap, 
-  WeatherAlertSystem 
+  WeatherAlertSystem,
+  SoilHealthChart,
+  WeatherImpactChart,
+  CropPerformanceChart,
+  SeasonalAnalysisChart
 } from '../components/Charts'
 import SatelliteDataDashboard from '../components/SatelliteDataDashboard'
 import ImageAnalysisDashboard from '../components/ImageAnalysisDashboard'
@@ -276,6 +280,23 @@ export default function PredictionsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <CropDistributionChart crops={crops} predictions={predictions} />
             <ProductivityZoneMap regions={regions} predictions={predictions} />
+          </div>
+        </div>
+
+        {/* Pipeline Data Analysis Charts */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-white mb-6 text-center">🌱 Pipeline Data Analysis</h2>
+          
+          {/* Soil and Weather Analysis */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <SoilHealthChart pipelineData={predictions} />
+            <WeatherImpactChart pipelineData={predictions} />
+          </div>
+          
+          {/* Crop and Seasonal Analysis */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <CropPerformanceChart pipelineData={predictions} crops={crops} />
+            <SeasonalAnalysisChart pipelineData={predictions} crops={crops} />
           </div>
         </div>
 
