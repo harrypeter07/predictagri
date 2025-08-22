@@ -13,10 +13,39 @@ export default function EnhancedFarmerAnalysis() {
     lon: '',
     images: []
   })
+  const [userLocation, setUserLocation] = useState(null)
+  const [autoDetectLocation, setAutoDetectLocation] = useState(true)
+
+  // Get user location on component mount
+  useEffect(() => {
+    const getUserLocation = async () => {
+      if (autoDetectLocation) {
+        try {
+          const { locationService } = await import('../../lib/locationService')
+          const location = await locationService.getLocationWithFallback()
+          setUserLocation(location)
+          
+          // Auto-fill coordinates if not manually set
+          if (!farmerInput.lat && !farmerInput.lon) {
+            setFarmerInput(prev => ({
+              ...prev,
+              lat: location.lat.toString(),
+              lon: location.lon.toString(),
+              address: location.city ? `${location.city}, ${location.region}` : ''
+            }))
+          }
+        } catch (error) {
+          console.error('Failed to get user location:', error)
+        }
+      }
+    }
+    
+    getUserLocation()
+  }, [autoDetectLocation])
 
   const runAnalysis = async () => {
-    if (!farmerInput.farmerId || (!farmerInput.address && (!farmerInput.lat || !farmerInput.lon))) {
-      setError('Please provide Farmer ID and either address or coordinates')
+    if (!farmerInput.farmerId) {
+      setError('Please provide Farmer ID')
       return
     }
 
@@ -24,23 +53,38 @@ export default function EnhancedFarmerAnalysis() {
     setError(null)
 
     try {
+      // Use current location if no coordinates provided
+      let finalLat = farmerInput.lat
+      let finalLon = farmerInput.lon
+      let finalAddress = farmerInput.address
+      
+      if ((!finalLat || !finalLon) && userLocation) {
+        finalLat = userLocation.lat
+        finalLon = userLocation.lon
+        finalAddress = userLocation.city ? `${userLocation.city}, ${userLocation.region}` : finalAddress
+      }
+
       let url = '/api/farmer-analysis'
       let method = 'GET'
       let body = null
 
-      if (farmerInput.address) {
-        url += `?address=${encodeURIComponent(farmerInput.address)}&farmerId=${farmerInput.farmerId}`
+      if (finalAddress) {
+        url += `?address=${encodeURIComponent(finalAddress)}&farmerId=${farmerInput.farmerId}`
+      } else if (finalLat && finalLon) {
+        url += `?lat=${finalLat}&lon=${finalLon}&farmerId=${farmerInput.farmerId}`
       } else {
-        url += `?lat=${farmerInput.lat}&lon=${farmerInput.lon}&farmerId=${farmerInput.farmerId}`
+        setError('Location information is required. Please enable location detection or enter coordinates manually.')
+        return
       }
 
       if (farmerInput.images.length > 0) {
         method = 'POST'
         body = JSON.stringify({
           farmerId: farmerInput.farmerId,
-          coordinates: farmerInput.lat && farmerInput.lon ? { lat: parseFloat(farmerInput.lat), lon: parseFloat(farmerInput.lon) } : null,
-          address: farmerInput.address || null,
-          images: farmerInput.images
+          coordinates: finalLat && finalLon ? { lat: parseFloat(finalLat), lon: parseFloat(finalLon) } : null,
+          address: finalAddress || null,
+          images: farmerInput.images,
+          userLocation: userLocation
         })
       }
 
@@ -100,6 +144,27 @@ export default function EnhancedFarmerAnalysis() {
     <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
       <h3 className="text-xl font-semibold text-white mb-4">🚜 Enhanced Farmer Analysis Pipeline</h3>
       
+      {/* Location Status */}
+      {userLocation && (
+        <div className="bg-blue-900 border border-blue-700 rounded p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="text-blue-300 text-sm">
+              📍 Location Detected: {userLocation.city ? `${userLocation.city}, ${userLocation.region}` : `${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`}
+              <span className="text-blue-400 ml-2">({userLocation.source})</span>
+            </div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={autoDetectLocation}
+                onChange={(e) => setAutoDetectLocation(e.target.checked)}
+                className="mr-2"
+              />
+              <span className="text-blue-300 text-sm">Auto-detect</span>
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Input Form */}
       <div className="space-y-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -121,7 +186,8 @@ export default function EnhancedFarmerAnalysis() {
               value={farmerInput.address}
               onChange={(e) => setFarmerInput(prev => ({ ...prev, address: e.target.value }))}
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Nagpur, Maharashtra"
+              placeholder={userLocation ? "Auto-filled from location" : "e.g., Nagpur, Maharashtra"}
+              disabled={autoDetectLocation && userLocation && farmerInput.address}
             />
           </div>
         </div>

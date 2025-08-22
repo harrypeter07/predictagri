@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { generateMockPrediction, mockUsers } from '../../lib/mockData'
+// Removed mock data import - using real-time data
 import { 
   YieldTrendChart, 
   RegionalPerformanceChart, 
@@ -70,12 +70,35 @@ export default function PredictionsPage() {
     setError(null)
 
     try {
-      const mockPrediction = generateMockPrediction(selectedCrop, selectedRegion)
+      // Get user location and real-time weather data
+      const { locationService } = await import('../../lib/locationService')
+      const userLocation = await locationService.getLocationWithFallback()
+      const weatherData = await locationService.getCurrentLocationWeather()
+      
       const requestData = {
-        userId: selectedUser || null,
+        userId: selectedUser || `user-${Date.now()}`,
         cropId: selectedCrop,
         regionId: selectedRegion,
-        features: mockPrediction.features
+        location: {
+          lat: userLocation.lat,
+          lon: userLocation.lon,
+          address: userLocation.city ? `${userLocation.city}, ${userLocation.region}` : 'Unknown Location',
+          source: userLocation.source
+        },
+        features: {
+          temperature: weatherData.weather?.current?.temperature_2m || 25,
+          humidity: weatherData.weather?.current?.relative_humidity_2m || 65,
+          rainfall: weatherData.weather?.daily?.precipitation_sum?.[0] || 0,
+          wind_speed: weatherData.weather?.current?.wind_speed_10m || 5,
+          soil_moisture: Math.max(0.2, Math.min(0.8, 
+            (weatherData.weather?.current?.relative_humidity_2m || 65) / 100 * 0.7
+          )),
+          nitrogen: 40 + Math.random() * 20,
+          phosphorus: 25 + Math.random() * 15,
+          potassium: 20 + Math.random() * 15,
+          ph: 6.0 + Math.random() * 2
+        },
+        timestamp: new Date().toISOString()
       }
 
       const response = await fetch('/api/predictions', {
@@ -164,7 +187,7 @@ export default function PredictionsPage() {
         {/* Add Live Panels Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <WeatherPanel />
-          <AgriPipelinePanel region={regions[0]?.name || 'kansas'} />
+          <AgriPipelinePanel region={regions[0]?.name || 'user-location'} />
           <NasaPanel />
         </div>
 

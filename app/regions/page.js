@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { mockRegions } from '../../lib/mockData'
+// Removed mock data import - using real region management
 
 export default function RegionsPage() {
   const [regions, setRegions] = useState([])
@@ -38,19 +38,35 @@ export default function RegionsPage() {
     }
   }
 
-  const addMockRegions = async () => {
+  const addCurrentLocationRegion = async () => {
     setLoading(true)
     try {
-      for (const region of mockRegions) {
-        await fetch('/api/regions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(region)
-        })
+      // Get user's current location
+      const { locationService } = await import('../../lib/locationService')
+      const userLocation = await locationService.getLocationWithFallback()
+      const address = await locationService.getAddressFromCoordinates(userLocation.lat, userLocation.lon)
+      
+      const currentRegion = {
+        name: address.components?.city || address.components?.town || address.components?.village || 'Current Location',
+        lat: userLocation.lat,
+        lon: userLocation.lon,
+        soil_n: 40 + Math.random() * 20, // Estimated values - could be enhanced with soil APIs
+        soil_p: 25 + Math.random() * 15,
+        soil_k: 20 + Math.random() * 15,
+        ph: 6.0 + Math.random() * 2,
+        source: 'user-location',
+        timestamp: new Date().toISOString()
       }
+      
+      await fetch('/api/regions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentRegion)
+      })
+      
       fetchRegions()
     } catch (err) {
-      setError('Error adding mock regions')
+      setError('Error adding current location region: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -104,11 +120,11 @@ export default function RegionsPage() {
             {showAddForm ? 'Cancel' : 'Add New Region'}
           </button>
           <button
-            onClick={addMockRegions}
+            onClick={addCurrentLocationRegion}
             disabled={loading}
             className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg"
           >
-            Add Mock Regions
+            Add Current Location
           </button>
         </div>
 

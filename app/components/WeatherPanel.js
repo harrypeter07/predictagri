@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
-export default function WeatherPanel({ lat = 38.5111, lon = -96.8005, title = '🌤️ Weather (Open‑Meteo)' }) {
+export default function WeatherPanel({ lat, lon, title = '🌤️ Weather (Open‑Meteo)' }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -12,10 +12,36 @@ export default function WeatherPanel({ lat = 38.5111, lon = -96.8005, title = '�
     async function run() {
       try {
         setLoading(true)
-        const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`)
+        
+        let finalLat = lat
+        let finalLon = lon
+        
+        // If no coordinates provided, get user's location
+        if (!lat || !lon) {
+          try {
+            const { locationService } = await import('../../lib/locationService')
+            const userLocation = await locationService.getLocationWithFallback()
+            finalLat = userLocation.lat
+            finalLon = userLocation.lon
+          } catch (locationError) {
+            console.warn('Failed to get user location, using default:', locationError)
+            // Fallback to Nagpur, India
+            finalLat = 21.1458
+            finalLon = 79.0882
+          }
+        }
+        
+        const res = await fetch(`/api/weather?lat=${finalLat}&lon=${finalLon}`)
         const json = await res.json()
         if (!res.ok || !json.success) throw new Error(json.error || 'Weather fetch failed')
-        if (mounted) setData(json)
+        if (mounted) setData({
+          ...json,
+          location: {
+            lat: finalLat,
+            lon: finalLon,
+            source: (!lat || !lon) ? 'auto-detected' : 'provided'
+          }
+        })
       } catch (e) {
         if (mounted) setError(e.message)
       } finally {

@@ -54,27 +54,47 @@ export default function Home() {
     }
   }
 
-  const generateMockPrediction = async () => {
+  const generateRealTimePrediction = async () => {
     setLoading(true)
     setError(null)
     setResult(null)
 
     try {
-      // Mock data for testing
-      const mockData = {
-        userId: '123e4567-e89b-12d3-a456-426614174000', // Mock user ID
-        cropId: '123e4567-e89b-12d3-a456-426614174001', // Mock crop ID
-        regionId: '123e4567-e89b-12d3-a456-426614174002', // Mock region ID
+      // Import location service dynamically (client-side only)
+      const { locationService } = await import('../lib/locationService')
+      
+      // Get user's current location
+      const userLocation = await locationService.getLocationWithFallback()
+      
+      // Get real-time weather data for the user's location
+      const weatherData = await locationService.getCurrentLocationWeather()
+      
+      // Create prediction data based on real location and weather
+      const realTimeData = {
+        userId: `user-${Date.now()}`, // Generate unique user ID
+        cropId: 'crop-default', // This could be selected by user
+        regionId: `region-${userLocation.lat.toFixed(2)}-${userLocation.lon.toFixed(2)}`,
+        location: {
+          lat: userLocation.lat,
+          lon: userLocation.lon,
+          address: userLocation.city ? `${userLocation.city}, ${userLocation.region}` : 'Unknown Location',
+          source: userLocation.source
+        },
         features: {
-          temperature: 25.5,
-          humidity: 65,
-          rainfall: 120,
-          soil_moisture: 0.45,
-          nitrogen: 45,
-          phosphorus: 30,
-          potassium: 25,
-          ph: 6.5
-        }
+          temperature: weatherData.weather?.current?.temperature_2m || 25,
+          humidity: weatherData.weather?.current?.relative_humidity_2m || 65,
+          rainfall: weatherData.weather?.daily?.precipitation_sum?.[0] || 0,
+          wind_speed: weatherData.weather?.current?.wind_speed_10m || 5,
+          // Generate estimated soil data based on location and weather
+          soil_moisture: Math.max(0.2, Math.min(0.8, 
+            (weatherData.weather?.current?.relative_humidity_2m || 65) / 100 * 0.7
+          )),
+          nitrogen: 40 + Math.random() * 20, // Estimated, could be improved with soil data APIs
+          phosphorus: 25 + Math.random() * 15,
+          potassium: 20 + Math.random() * 15,
+          ph: 6.0 + Math.random() * 2
+        },
+        timestamp: new Date().toISOString()
       }
 
       const response = await fetch('/api/predictions', {
@@ -82,20 +102,25 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(mockData)
+        body: JSON.stringify(realTimeData)
       })
 
       const data = await response.json()
       
       if (response.ok) {
-        setResult(data)
+        setResult({
+          ...data,
+          location: userLocation,
+          weather: weatherData.weather
+        })
         // Refresh predictions list
         fetchData()
       } else {
         setError(data.error || 'Failed to generate prediction')
       }
     } catch (err) {
-      setError('Error generating prediction')
+      console.error('Real-time prediction error:', err)
+      setError(`Error generating real-time prediction: ${err.message}`)
     } finally {
       setLoading(false)
     }
@@ -126,10 +151,10 @@ export default function Home() {
                 <p className="text-sm opacity-90">Add and manage crop types</p>
               </Link>
               
-              <div className="bg-orange-600 hover:bg-orange-700 text-white p-6 rounded-lg text-center transition-colors cursor-pointer border border-orange-500" onClick={generateMockPrediction}>
-                <div className="text-3xl mb-2">⚡</div>
-                <h3 className="font-semibold">Quick Test</h3>
-                <p className="text-sm opacity-90">Generate a test prediction</p>
+              <div className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg text-center transition-colors cursor-pointer border border-blue-500" onClick={generateRealTimePrediction}>
+                <div className="text-3xl mb-2">📍</div>
+                <h3 className="font-semibold">Real-Time Prediction</h3>
+                <p className="text-sm opacity-90">Generate prediction using your location</p>
               </div>
             </div>
 

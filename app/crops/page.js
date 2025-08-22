@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { mockCrops } from '../../lib/mockData'
+// Removed mock data import - using real crop management
 
 export default function CropsPage() {
   const [crops, setCrops] = useState([])
@@ -30,10 +30,21 @@ export default function CropsPage() {
     }
   }
 
-  const addMockCrops = async () => {
+  const addCommonCrops = async () => {
     setLoading(true)
     try {
-      for (const crop of mockCrops) {
+      const commonCrops = [
+        { name: 'Wheat', season: 'Rabi' },
+        { name: 'Rice', season: 'Kharif' },
+        { name: 'Maize', season: 'Kharif' },
+        { name: 'Cotton', season: 'Kharif' },
+        { name: 'Sugarcane', season: 'Year-round' },
+        { name: 'Potato', season: 'Rabi' },
+        { name: 'Tomato', season: 'Year-round' },
+        { name: 'Onion', season: 'Rabi' }
+      ]
+      
+      for (const crop of commonCrops) {
         await fetch('/api/crops', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -42,7 +53,7 @@ export default function CropsPage() {
       }
       fetchCrops()
     } catch (err) {
-      setError('Error adding mock crops')
+      setError('Error adding common crops')
     } finally {
       setLoading(false)
     }
@@ -105,11 +116,11 @@ export default function CropsPage() {
             {showAddForm ? 'Cancel' : 'Add New Crop'}
           </button>
           <button
-            onClick={addMockCrops}
+            onClick={addCommonCrops}
             disabled={loading}
             className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg"
           >
-            Add Mock Crops
+            Add Common Crops
           </button>
         </div>
 
