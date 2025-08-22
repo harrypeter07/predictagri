@@ -98,18 +98,18 @@ export default function RegionsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading regions...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-xl text-white">Loading regions...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-black py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Regions Management</h1>
-          <p className="text-lg text-gray-600">Manage agricultural regions and soil data</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Regions Management</h1>
+          <p className="text-lg text-gray-300">Manage agricultural regions and soil data</p>
         </header>
 
         <div className="mb-6 flex gap-4 justify-center">
@@ -129,21 +129,21 @@ export default function RegionsPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded">
             {error}
           </div>
         )}
 
         {showAddForm && (
-          <div className="mb-6 bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Add New Region</h2>
+          <div className="mb-6 bg-gray-900 rounded-lg shadow-md p-6 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-4 text-white">Add New Region</h2>
             <form onSubmit={handleAddRegion} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 type="text"
                 placeholder="Region Name"
                 value={newRegion.name}
                 onChange={(e) => setNewRegion({...newRegion, name: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <input
@@ -152,7 +152,7 @@ export default function RegionsPage() {
                 placeholder="Latitude"
                 value={newRegion.lat}
                 onChange={(e) => setNewRegion({...newRegion, lat: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <input
@@ -161,7 +161,7 @@ export default function RegionsPage() {
                 placeholder="Longitude"
                 value={newRegion.lon}
                 onChange={(e) => setNewRegion({...newRegion, lon: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <input
@@ -169,7 +169,7 @@ export default function RegionsPage() {
                 placeholder="Soil Nitrogen (N)"
                 value={newRegion.soil_n}
                 onChange={(e) => setNewRegion({...newRegion, soil_n: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <input
@@ -177,7 +177,7 @@ export default function RegionsPage() {
                 placeholder="Soil Phosphorus (P)"
                 value={newRegion.soil_p}
                 onChange={(e) => setNewRegion({...newRegion, soil_p: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <input
@@ -185,7 +185,7 @@ export default function RegionsPage() {
                 placeholder="Soil Potassium (K)"
                 value={newRegion.soil_k}
                 onChange={(e) => setNewRegion({...newRegion, soil_k: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <input
@@ -194,7 +194,7 @@ export default function RegionsPage() {
                 placeholder="Soil pH"
                 value={newRegion.ph}
                 onChange={(e) => setNewRegion({...newRegion, ph: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <button
@@ -210,15 +210,15 @@ export default function RegionsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {regions.map((region) => (
-            <div key={region.id} className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-semibold mb-2">{region.name}</h3>
-              <div className="space-y-2 text-sm">
+            <div key={region.id} className="bg-gray-900 rounded-lg shadow-md p-6 border border-gray-700">
+              <h3 className="text-xl font-semibold mb-2 text-white">{region.name}</h3>
+              <div className="space-y-2 text-sm text-gray-300">
                 <p><strong>Location:</strong> {region.lat.toFixed(4)}, {region.lon.toFixed(4)}</p>
                 <p><strong>Soil N:</strong> {region.soil_n} mg/kg</p>
                 <p><strong>Soil P:</strong> {region.soil_p} mg/kg</p>
                 <p><strong>Soil K:</strong> {region.soil_k} mg/kg</p>
                 <p><strong>pH:</strong> {region.ph}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Added: {new Date(region.created_at).toLocaleDateString()}
                 </p>
               </div>
@@ -228,7 +228,7 @@ export default function RegionsPage() {
 
         {regions.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No regions found. Add some regions to get started!</p>
+            <p className="text-gray-400 text-lg">No regions found. Add some regions to get started!</p>
           </div>
         )}
       </div>

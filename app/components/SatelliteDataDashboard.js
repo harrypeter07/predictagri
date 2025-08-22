@@ -400,7 +400,7 @@ export const SatelliteDataDashboard = ({ region }) => {
             <div>
               <h4 className="text-lg font-semibold text-yellow-200">Fallback Mode Active</h4>
               <p className="text-yellow-100 text-sm">
-                Google Earth Engine is unavailable. Using mock data for demonstration purposes.
+                Google Earth Engine is unavailable. Using fallback data for demonstration purposes.
               </p>
             </div>
           </div>

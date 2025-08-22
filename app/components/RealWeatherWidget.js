@@ -231,9 +231,9 @@ export const RealWeatherWidget = ({ region }) => {
             {lastUpdated ? `Updated: ${lastUpdated.toLocaleTimeString()}` : 'Never updated'}
           </span>
         </div>
-        {weatherData.isMock && (
+        {weatherData.isFallback && (
           <p className="text-xs text-yellow-500 mt-1 text-center">
-            ⚠️ Using mock data (API key not configured)
+            ⚠️ Using fallback data (API key not configured)
           </p>
         )}
         <button 

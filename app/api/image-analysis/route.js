@@ -70,12 +70,12 @@ export async function POST(request) {
         imageBuffer = arr
         logger.info('json_image_url_fetched', { length: imageBuffer.length })
       } else {
-        // No image provided; run mock/fallback analysis
+        // No image provided; run fallback analysis
         logger.warn('no_image_in_json_payload')
         imageBuffer = Buffer.from('')
       }
     } else {
-      // Unsupported content-type; try to proceed with mock
+      // Unsupported content-type; try to proceed with fallback
       logger.warn('unsupported_content_type', { contentType })
       imageBuffer = Buffer.from('')
     }
@@ -95,12 +95,13 @@ export async function POST(request) {
     return ok(enhancedResult, logger, { analysisType })
   } catch (error) {
     logger.error('image_analysis_exception', { error: error?.message })
-    // Graceful fallback: return mock result from service
+    // Graceful fallback: return fallback result from service
     try {
       const fallback = await imageProcessingService.analyzeAgriculturalImage(Buffer.from(''), 'comprehensive')
-          return NextResponse.json({ success: true, data: fallback, fallback: true })
-  } catch (inner) {
-    return fail(500, 'Failed to analyze image', logger, { message: error?.message })
+      return NextResponse.json({ success: true, data: fallback, fallback: true })
+    } catch (inner) {
+      return fail(500, 'Failed to analyze image', logger, { message: error?.message })
+    }
   }
 }
 
@@ -148,7 +149,6 @@ export async function POST(request) {
       { status: 500 }
     )
   }
-}
 }
 
 // GET: Get supported analysis types and service status

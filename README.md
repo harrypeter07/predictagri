@@ -346,7 +346,7 @@ predictagri/
 
 ### **Fallback Systems**
 - **API Failure Handling** with graceful degradation
-- **Mock Data Generation** when external services are unavailable
+- **Fallback Data Generation** when external services are unavailable
 - **Error Recovery** with automatic retry mechanisms
 - **Service Monitoring** with comprehensive logging
 

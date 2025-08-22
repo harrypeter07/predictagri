@@ -167,12 +167,12 @@ export async function GET(request) {
     if (farmerMode) {
       // Check enhanced pipeline status
       const enhancedPipeline = new EnhancedAutomatedPipeline()
-      const mockFarmerData = {
+      const fallbackFarmerData = {
         farmerId: 'status_check',
         coordinates: { lat: 21.1458, lon: 79.0882 } // Default to Nagpur
       }
       
-      result = await enhancedPipeline.executeFarmerPipeline(mockFarmerData)
+      result = await enhancedPipeline.executeFarmerPipeline(fallbackFarmerData)
       
       if (result.success) {
         result = {
