@@ -107,6 +107,25 @@ CREATE TABLE image_analysis_results (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 8. Farmer Analysis Results table (NEW)
+CREATE TABLE farmer_analysis_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    farmer_id TEXT NOT NULL, -- farmer identifier
+    phone_number TEXT NOT NULL, -- farmer's phone number
+    region_id UUID REFERENCES regions(id),
+    crop_id UUID REFERENCES crops(id),
+    analysis_type TEXT NOT NULL, -- 'enhanced_pipeline', 'basic_pipeline', 'image_analysis'
+    pipeline_id TEXT NOT NULL, -- unique pipeline identifier
+    insights JSONB NOT NULL, -- store all insights
+    predictions JSONB NOT NULL, -- store all predictions
+    data_collection JSONB NOT NULL, -- store weather, environmental, satellite data
+    alerts JSONB, -- store generated alerts
+    recommendations JSONB, -- store recommendations
+    notification_sent BOOLEAN DEFAULT FALSE, -- track if notification was sent
+    notification_sent_at TIMESTAMP WITH TIME ZONE, -- when notification was sent
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_predictions_user_id ON predictions(user_id);
 CREATE INDEX idx_predictions_crop_id ON predictions(crop_id);
@@ -127,6 +146,15 @@ CREATE INDEX idx_image_analysis_crop_id ON image_analysis_results(crop_id);
 CREATE INDEX idx_image_analysis_type ON image_analysis_results(analysis_type);
 CREATE INDEX idx_image_analysis_timestamp ON image_analysis_results(timestamp);
 
+-- Indexes for farmer analysis results
+CREATE INDEX idx_farmer_analysis_farmer_id ON farmer_analysis_results(farmer_id);
+CREATE INDEX idx_farmer_analysis_phone_number ON farmer_analysis_results(phone_number);
+CREATE INDEX idx_farmer_analysis_region_id ON farmer_analysis_results(region_id);
+CREATE INDEX idx_farmer_analysis_crop_id ON farmer_analysis_results(crop_id);
+CREATE INDEX idx_farmer_analysis_pipeline_id ON farmer_analysis_results(pipeline_id);
+CREATE INDEX idx_farmer_analysis_created_at ON farmer_analysis_results(created_at);
+CREATE INDEX idx_farmer_analysis_notification_sent ON farmer_analysis_results(notification_sent);
+
 -- Add Row Level Security (RLS) policies for better security
 ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crops ENABLE ROW LEVEL SECURITY;
@@ -135,6 +163,7 @@ ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weather_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE satellite_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE image_analysis_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE farmer_analysis_results ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to regions and crops (for dropdowns)
 CREATE POLICY "Allow public read access to regions" ON regions FOR SELECT USING (true);
@@ -155,3 +184,8 @@ CREATE POLICY "Allow public read access to image_analysis_results" ON image_anal
 -- Allow public access to alerts (for the app to work without auth)
 CREATE POLICY "Allow public insert to alerts" ON alerts FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public read access to alerts" ON alerts FOR SELECT USING (true);
+
+-- Allow public access to farmer analysis results
+CREATE POLICY "Allow public insert to farmer_analysis_results" ON farmer_analysis_results FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public read access to farmer_analysis_results" ON farmer_analysis_results FOR SELECT USING (true);
+CREATE POLICY "Allow public update to farmer_analysis_results" ON farmer_analysis_results FOR UPDATE USING (true);

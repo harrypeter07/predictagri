@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server'
 import { googleEarthEngineService } from '../../../lib/googleEarthEngineService'
 import { imageProcessingService } from '../../../lib/imageProcessingService.js'
+import { enhancedAutomatedPipeline } from '../../../lib/enhancedAutomatedPipeline.js'
+import { twilioService } from '../../../lib/twilioService.js'
+import { supabase } from '../../../lib/supabaseClient'
+import { Logger } from '../../../lib/logger'
 
 // GET: Get comprehensive farmer analysis
 export async function GET(request) {
+  const logger = new Logger({ route: '/api/farmer-analysis' })
+  
   try {
     const { searchParams } = new URL(request.url)
     const lat = parseFloat(searchParams.get('lat'))
     const lon = parseFloat(searchParams.get('lon'))
     const address = searchParams.get('address')
     const farmerId = searchParams.get('farmerId') || 'farmer_001'
+    const phoneNumber = searchParams.get('phoneNumber') || '+919322909257'
 
     if (!lat && !lon && !address) {
       return NextResponse.json(
@@ -27,43 +34,49 @@ export async function GET(request) {
       coordinates = await getCoordinatesFromAddress(address)
     }
 
-    const region = {
-      name: `Farmer Field ${farmerId}`,
-      lat: coordinates.lat,
-      lon: coordinates.lon
+    // Step 2: Use enhanced automated pipeline for comprehensive analysis
+    const farmerData = {
+      farmerId,
+      coordinates,
+      address: address || `Coordinates: ${lat}, ${lon}`,
+      phoneNumber
     }
 
-    // Step 2: Collect comprehensive environmental data
-    const environmentalData = await collectEnvironmentalData(region)
+    const pipelineResult = await enhancedAutomatedPipeline.executeFarmerPipeline(farmerData)
     
-    // Step 3: Get weather data
-    const weatherData = await getWeatherData(coordinates)
-    
-    // Step 4: Generate agricultural insights
-    const insights = generateAgriculturalInsights(region, environmentalData, weatherData)
-    
-    // Step 5: Create recommendations
-    const recommendations = generateRecommendations(insights)
+    if (!pipelineResult.success) {
+      throw new Error(pipelineResult.error || 'Pipeline execution failed')
+    }
+
+    // Step 3: Store results in database
+    const storedResult = await storeFarmerAnalysisResults(pipelineResult, phoneNumber)
+
+    // Step 4: Send notification to farmer
+    const notificationResult = await sendFarmerNotification(pipelineResult, phoneNumber)
 
     return NextResponse.json({
       success: true,
       farmerId,
-      timestamp: new Date().toISOString(),
-      location: {
-        coordinates,
-        address: address || `Coordinates: ${lat}, ${lon}`,
-        agriculturalZone: classifyAgriculturalZone(coordinates.lat, coordinates.lon),
-        soilClassification: classifySoilType(coordinates.lat, coordinates.lon)
+      pipelineId: pipelineResult.pipelineId,
+      timestamp: pipelineResult.timestamp,
+      location: pipelineResult.location,
+      environmental: pipelineResult.environmental,
+      weather: pipelineResult.weather,
+      insights: pipelineResult.insights,
+      recommendations: pipelineResult.recommendations,
+      summary: pipelineResult.summary,
+      database: {
+        stored: storedResult.success,
+        recordId: storedResult.recordId
       },
-      environmental: environmentalData,
-      weather: weatherData,
-      insights,
-      recommendations,
-      summary: generateSummary(insights, recommendations)
+      notification: {
+        sent: notificationResult.success,
+        method: notificationResult.method
+      }
     })
 
   } catch (error) {
-    console.error('Farmer analysis failed:', error)
+    logger.error('farmer_analysis_failed', { error: error.message })
     return NextResponse.json({ 
       success: false, 
       error: error.message,
@@ -74,9 +87,11 @@ export async function GET(request) {
 
 // POST: Process farmer data with images
 export async function POST(request) {
+  const logger = new Logger({ route: '/api/farmer-analysis' })
+  
   try {
     const body = await request.json()
-    const { farmerId, coordinates, address, images, imageBase64 } = body
+    const { farmerId, coordinates, address, images, imageBase64, phoneNumber = '+919322909257' } = body
 
     if (!farmerId) {
       return NextResponse.json(
@@ -98,43 +113,52 @@ export async function POST(request) {
       )
     }
 
-    const region = {
-      name: `Farmer Field ${farmerId}`,
-      lat: farmerCoordinates.lat,
-      lon: farmerCoordinates.lon
+    // Use enhanced automated pipeline with images
+    const farmerData = {
+      farmerId,
+      coordinates: farmerCoordinates,
+      address: address || `Coordinates: ${farmerCoordinates.lat}, ${farmerCoordinates.lon}`,
+      phoneNumber,
+      images,
+      imageBase64
     }
 
-    // Collect all data
-    const [environmentalData, weatherData, imageAnalysis] = await Promise.all([
-      collectEnvironmentalData(region),
-      getWeatherData(farmerCoordinates),
-      processFarmerImages(images, imageBase64)
-    ])
+    const pipelineResult = await enhancedAutomatedPipeline.executeFarmerPipeline(farmerData)
+    
+    if (!pipelineResult.success) {
+      throw new Error(pipelineResult.error || 'Pipeline execution failed')
+    }
 
-    // Generate insights and recommendations
-    const insights = generateAgriculturalInsights(region, environmentalData, weatherData, imageAnalysis)
-    const recommendations = generateRecommendations(insights)
+    // Store results in database
+    const storedResult = await storeFarmerAnalysisResults(pipelineResult, phoneNumber)
+
+    // Send notification to farmer
+    const notificationResult = await sendFarmerNotification(pipelineResult, phoneNumber)
 
     return NextResponse.json({
       success: true,
       farmerId,
-      timestamp: new Date().toISOString(),
-      location: {
-        coordinates: farmerCoordinates,
-        address: address || `Coordinates: ${farmerCoordinates.lat}, ${farmerCoordinates.lon}`,
-        agriculturalZone: classifyAgriculturalZone(farmerCoordinates.lat, farmerCoordinates.lon),
-        soilClassification: classifySoilType(farmerCoordinates.lat, farmerCoordinates.lon)
+      pipelineId: pipelineResult.pipelineId,
+      timestamp: pipelineResult.timestamp,
+      location: pipelineResult.location,
+      environmental: pipelineResult.environmental,
+      weather: pipelineResult.weather,
+      imageAnalysis: pipelineResult.imageAnalysis,
+      insights: pipelineResult.insights,
+      recommendations: pipelineResult.recommendations,
+      summary: pipelineResult.summary,
+      database: {
+        stored: storedResult.success,
+        recordId: storedResult.recordId
       },
-      environmental: environmentalData,
-      weather: weatherData,
-      imageAnalysis,
-      insights,
-      recommendations,
-      summary: generateSummary(insights, recommendations)
+      notification: {
+        sent: notificationResult.success,
+        method: notificationResult.method
+      }
     })
 
   } catch (error) {
-    console.error('Farmer analysis with images failed:', error)
+    logger.error('farmer_analysis_with_images_failed', { error: error.message })
     return NextResponse.json({ 
       success: false, 
       error: error.message,
@@ -841,6 +865,110 @@ function getFallbackSingleImageAnalysis(imageId) {
   }
 }
 
+// Database and notification helper functions
+async function storeFarmerAnalysisResults(pipelineResult, phoneNumber) {
+  try {
+    const { data: record, error } = await supabase
+      .from('farmer_analysis_results')
+      .insert({
+        farmer_id: pipelineResult.farmerId,
+        phone_number: phoneNumber,
+        region_id: null, // Will be set if region mapping is available
+        crop_id: null, // Will be set if crop mapping is available
+        analysis_type: 'enhanced_pipeline',
+        pipeline_id: pipelineResult.pipelineId,
+        insights: pipelineResult.insights,
+        predictions: pipelineResult.predictions || [],
+        data_collection: {
+          weather: pipelineResult.weather,
+          environmental: pipelineResult.environmental,
+          imageAnalysis: pipelineResult.imageAnalysis
+        },
+        alerts: pipelineResult.alerts || [],
+        recommendations: pipelineResult.recommendations,
+        notification_sent: false,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Failed to store farmer analysis results:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, recordId: record.id }
+  } catch (error) {
+    console.error('Database storage failed:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+async function sendFarmerNotification(pipelineResult, phoneNumber) {
+  try {
+    // Create a comprehensive agricultural alert
+    const alertData = {
+      type: 'comprehensive_analysis',
+      severity: 'medium',
+      region: pipelineResult.location?.address || 'Your Field',
+      crop: 'Agricultural Analysis',
+      recommendation: generateNotificationMessage(pipelineResult)
+    }
+
+    // Send both SMS and voice notification
+    const result = await twilioService.sendAgriculturalAlert(phoneNumber, alertData, 'hi')
+
+    // Update database record to mark notification as sent
+    if (result.success) {
+      await supabase
+        .from('farmer_analysis_results')
+        .update({
+          notification_sent: true,
+          notification_sent_at: new Date().toISOString()
+        })
+        .eq('pipeline_id', pipelineResult.pipelineId)
+    }
+
+    return {
+      success: result.success,
+      method: result.sms?.success ? 'SMS + Voice' : result.voice?.success ? 'Voice' : 'Failed'
+    }
+  } catch (error) {
+    console.error('Notification sending failed:', error)
+    return { success: false, method: 'Failed', error: error.message }
+  }
+}
+
+function generateNotificationMessage(pipelineResult) {
+  const insights = pipelineResult.insights
+  const recommendations = pipelineResult.recommendations
+
+  let message = 'आपके खेत का विश्लेषण पूरा हुआ है। '
+
+  // Add key insights
+  if (insights?.soilHealth?.overall) {
+    message += `मिट्टी की स्थिति: ${insights.soilHealth.overall}। `
+  }
+
+  if (insights?.yieldPotential?.overall) {
+    message += `उपज की संभावना: ${insights.yieldPotential.overall}। `
+  }
+
+  if (insights?.pestRisk?.overall) {
+    message += `कीट जोखिम: ${insights.pestRisk.overall}। `
+  }
+
+  // Add top recommendation
+  if (recommendations && recommendations.length > 0) {
+    const topRec = recommendations[0]
+    message += `मुख्य सिफारिश: ${topRec.action}। `
+  }
+
+  message += 'विस्तृत रिपोर्ट के लिए ऐप चेक करें।'
+
+  return message
+}
+
 function getFallbackData() {
   return {
     location: {
@@ -853,9 +981,9 @@ function getFallbackData() {
         npk: { n: 'Medium', p: 'High', k: 'Low' }
       }
     },
-          environmental: getFallbackEnvironmentalData({ lat: 21.1458, lon: 79.0882 }),
-      weather: getFallbackWeatherData({ lat: 21.1458, lon: 79.0882 }),
-      imageAnalysis: getFallbackImageAnalysis(),
+    environmental: getFallbackEnvironmentalData({ lat: 21.1458, lon: 79.0882 }),
+    weather: getFallbackWeatherData({ lat: 21.1458, lon: 79.0882 }),
+    imageAnalysis: getFallbackImageAnalysis(),
     insights: {
       soilHealth: { overall: 'Good', score: 75, issues: [], strengths: ['Optimal soil moisture'], recommendations: [] },
       cropSuitability: { bestCrops: ['Cotton', 'Soybean'], goodCrops: ['Pulses'], avoidCrops: [], reasoning: {} },

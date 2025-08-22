@@ -37,3 +37,19 @@ TWILIO_PHONE_NUMBER=your_twilio_phone_number_here
 DEBUG_GEE=false
 DEBUG_NASA=false
 DEBUG_WEATHER=false
+
+# 📊 Enhanced Logging Configuration (Optional)
+LOG_LEVEL=info
+ENABLE_STRUCTURED_LOGGING=false
+ENABLE_PERFORMANCE_LOGGING=false
+
+# 🔒 Security Configuration (Optional)
+ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
+
+# 💾 Database Configuration (Required for enhanced features)
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# 🚀 Performance Configuration (Optional)
+CACHE_MAX_SIZE=1000
+CACHE_MAX_MEMORY=100MB
+CACHE_DEFAULT_TTL=300000
