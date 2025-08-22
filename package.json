@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/earthengine": "^1.6.4",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.55.0",
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",
@@ -22,7 +23,8 @@
     "react": "19.1.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "19.1.0",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "twilio": "^5.8.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
