@@ -276,10 +276,10 @@ export default function Home() {
                   <p className="text-gray-300 mb-3">Start by adding regions and crops to your database:</p>
                   <div className="space-y-2">
                     <Link href="/regions" className="block text-blue-400 hover:text-blue-300">
-                      → Add Regions (with mock data)
+                      → Add Regions (with sample data)
                     </Link>
                     <Link href="/crops" className="block text-blue-400 hover:text-blue-300">
-                      → Add Crops (with mock data)
+                      → Add Crops (with sample data)
                     </Link>
                   </div>
                 </div>

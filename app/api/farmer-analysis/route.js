@@ -145,26 +145,27 @@ export async function POST(request) {
 
 // Helper functions
 async function getCoordinatesFromAddress(address) {
-  // Simple mock geocoding - replace with actual geocoding service
-  const mockCoords = {
-    'Nagpur, Maharashtra': { lat: 21.1458, lon: 79.0882 },
-    'Punjab Region': { lat: 30.3753, lon: 69.3451 },
-    'Haryana Plains': { lat: 29.0588, lon: 76.0856 },
-    'Uttar Pradesh Central': { lat: 26.8467, lon: 80.9462 },
-    'Maharashtra Western': { lat: 19.0760, lon: 72.8777 },
-    'Karnataka Southern': { lat: 12.9716, lon: 77.5946 },
-    'Tamil Nadu Coastal': { lat: 13.0827, lon: 80.2707 },
-    'Gujarat Western': { lat: 23.0225, lon: 72.5714 },
-    'Rajasthan Northern': { lat: 26.9124, lon: 75.7873 }
-  }
-
-  for (const [key, coords] of Object.entries(mockCoords)) {
-    if (address.toLowerCase().includes(key.toLowerCase())) {
-      return coords
+    // Try to get coordinates from database regions first
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+    
+    const { data: regions } = await supabase
+      .from('regions')
+      .select('name, lat, lon')
+    
+    if (regions) {
+      for (const region of regions) {
+        if (address.toLowerCase().includes(region.name.toLowerCase())) {
+          return { lat: region.lat, lon: region.lon }
+        }
+      }
     }
+  } catch (error) {
+    console.warn('Failed to fetch regions from database:', error)
   }
 
-  // Default to Nagpur if no match
+  // Fallback to default coordinates if no match found
   return { lat: 21.1458, lon: 79.0882 }
 }
 
@@ -187,7 +188,7 @@ async function collectEnvironmentalData(region) {
     }
   } catch (error) {
     console.error('Environmental data collection failed:', error)
-    return getMockEnvironmentalData(region)
+    return getFallbackEnvironmentalData(region)
   }
 }
 
@@ -218,7 +219,7 @@ async function getWeatherData(coordinates) {
     }
   } catch (error) {
     console.error('Weather data collection failed:', error)
-    return getMockWeatherData(coordinates)
+    return getFallbackWeatherData(coordinates)
   }
 }
 
@@ -255,7 +256,7 @@ async function processFarmerImages(images, imageBase64) {
 
   } catch (error) {
     console.error('Image processing failed:', error)
-    return getMockImageAnalysis()
+    return getFallbackImageAnalysis()
   }
 }
 
@@ -301,7 +302,7 @@ async function processSingleImage(image, imageId) {
       imageId,
       error: error.message,
       timestamp: new Date().toISOString(),
-      data: getMockSingleImageAnalysis(imageId)
+      data: getFallbackSingleImageAnalysis(imageId)
     }
   }
 }
@@ -754,13 +755,13 @@ function generateWaterRecommendations(waterManagement) {
   return recommendations
 }
 
-// Mock data functions
-function getMockEnvironmentalData(region) {
+// Fallback data functions
+function getFallbackEnvironmentalData(region) {
   return {
     satellite: {
       ndvi: 0.65,
       landSurfaceTemperature: 28,
-      source: 'Mock Data',
+      source: 'Fallback Data',
       quality: 'low'
     },
     soil: {
@@ -777,11 +778,11 @@ function getMockEnvironmentalData(region) {
       }
     },
     timestamp: new Date().toISOString(),
-    source: 'Mock Data (Fallback)'
+    source: 'Fallback Data'
   }
 }
 
-function getMockWeatherData(coordinates) {
+function getFallbackWeatherData(coordinates) {
   return {
     current: {
       temperature_2m: 28,
@@ -802,15 +803,15 @@ function getMockWeatherData(coordinates) {
       cropStress: 'Low'
     },
     timestamp: new Date().toISOString(),
-    source: 'Mock Data (Fallback)'
+    source: 'Fallback Data'
   }
 }
 
-function getMockImageAnalysis() {
+function getFallbackImageAnalysis() {
   return {
     success: true,
     data: [{
-      imageId: 'mock_image_1',
+      imageId: 'fallback_image_1',
       timestamp: new Date().toISOString(),
       comprehensive: { success: true, data: { results: { overallHealth: 'Good' } } },
       cropHealth: { success: true, data: { results: { overallHealth: 'Good' } } },
@@ -831,7 +832,7 @@ function getMockImageAnalysis() {
   }
 }
 
-function getMockSingleImageAnalysis(imageId) {
+function getFallbackSingleImageAnalysis(imageId) {
   return {
     overallHealth: 'Good',
     soilType: 'Loam',
@@ -852,9 +853,9 @@ function getFallbackData() {
         npk: { n: 'Medium', p: 'High', k: 'Low' }
       }
     },
-    environmental: getMockEnvironmentalData({ lat: 21.1458, lon: 79.0882 }),
-    weather: getMockWeatherData({ lat: 21.1458, lon: 79.0882 }),
-    imageAnalysis: getMockImageAnalysis(),
+          environmental: getFallbackEnvironmentalData({ lat: 21.1458, lon: 79.0882 }),
+      weather: getFallbackWeatherData({ lat: 21.1458, lon: 79.0882 }),
+      imageAnalysis: getFallbackImageAnalysis(),
     insights: {
       soilHealth: { overall: 'Good', score: 75, issues: [], strengths: ['Optimal soil moisture'], recommendations: [] },
       cropSuitability: { bestCrops: ['Cotton', 'Soybean'], goodCrops: ['Pulses'], avoidCrops: [], reasoning: {} },

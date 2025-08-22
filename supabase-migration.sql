@@ -51,7 +51,7 @@ CREATE TABLE alerts (
     sent_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Insert ALL sample regions from mockData.js (8 regions total)
+-- Insert sample regions (8 regions total)
 INSERT INTO regions (name, lat, lon, soil_n, soil_p, soil_k, ph) VALUES
 ('Punjab Region', 30.3753, 69.3451, 45, 30, 25, 6.5),
 ('Haryana Plains', 29.0588, 76.0856, 50, 35, 30, 7.2),
@@ -62,7 +62,7 @@ INSERT INTO regions (name, lat, lon, soil_n, soil_p, soil_k, ph) VALUES
 ('Gujarat Western', 23.0225, 72.5714, 38, 22, 18, 7.8),
 ('Rajasthan Northern', 26.9124, 75.7873, 32, 18, 12, 8.1);
 
--- Insert ALL sample crops from mockData.js (12 crops total)
+-- Insert sample crops (12 crops total)
 INSERT INTO crops (name, season) VALUES
 ('Wheat', 'Rabi'),
 ('Rice', 'Kharif'),
@@ -76,26 +76,6 @@ INSERT INTO crops (name, season) VALUES
 ('Soybean', 'Kharif'),
 ('Groundnut', 'Kharif'),
 ('Sunflower', 'Rabi');
-
--- Create indexes for better performance
-CREATE INDEX idx_predictions_user_id ON predictions(user_id);
-CREATE INDEX idx_predictions_crop_id ON predictions(crop_id);
-CREATE INDEX idx_predictions_region_id ON predictions(region_id);
-CREATE INDEX idx_predictions_created_at ON predictions(created_at);
-CREATE INDEX idx_alerts_prediction_id ON alerts(prediction_id);
-CREATE INDEX idx_regions_location ON regions(lat, lon);
-
--- Indexes for new tables
-CREATE INDEX idx_weather_data_region_id ON weather_data(region_id);
-CREATE INDEX idx_weather_data_timestamp ON weather_data(timestamp);
-CREATE INDEX idx_weather_data_location ON weather_data(lat, lon);
-CREATE INDEX idx_satellite_data_region_id ON satellite_data(region_id);
-CREATE INDEX idx_satellite_data_type ON satellite_data(data_type);
-CREATE INDEX idx_satellite_data_timestamp ON satellite_data(timestamp);
-CREATE INDEX idx_image_analysis_region_id ON image_analysis_results(region_id);
-CREATE INDEX idx_image_analysis_crop_id ON image_analysis_results(crop_id);
-CREATE INDEX idx_image_analysis_type ON image_analysis_results(analysis_type);
-CREATE INDEX idx_image_analysis_timestamp ON image_analysis_results(timestamp);
 
 -- 5. Weather Data table for historical tracking
 CREATE TABLE weather_data (
@@ -126,6 +106,26 @@ CREATE TABLE image_analysis_results (
     image_metadata JSONB, -- store file info, size, type
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for better performance
+CREATE INDEX idx_predictions_user_id ON predictions(user_id);
+CREATE INDEX idx_predictions_crop_id ON predictions(crop_id);
+CREATE INDEX idx_predictions_region_id ON predictions(region_id);
+CREATE INDEX idx_predictions_created_at ON predictions(created_at);
+CREATE INDEX idx_alerts_prediction_id ON alerts(prediction_id);
+CREATE INDEX idx_regions_location ON regions(lat, lon);
+
+-- Indexes for new tables
+CREATE INDEX idx_weather_data_region_id ON weather_data(region_id);
+CREATE INDEX idx_weather_data_timestamp ON weather_data(timestamp);
+CREATE INDEX idx_weather_data_location ON weather_data(lat, lon);
+CREATE INDEX idx_satellite_data_region_id ON satellite_data(region_id);
+CREATE INDEX idx_satellite_data_type ON satellite_data(data_type);
+CREATE INDEX idx_satellite_data_timestamp ON satellite_data(timestamp);
+CREATE INDEX idx_image_analysis_region_id ON image_analysis_results(region_id);
+CREATE INDEX idx_image_analysis_crop_id ON image_analysis_results(crop_id);
+CREATE INDEX idx_image_analysis_type ON image_analysis_results(analysis_type);
+CREATE INDEX idx_image_analysis_timestamp ON image_analysis_results(timestamp);
 
 -- Add Row Level Security (RLS) policies for better security
 ALTER TABLE regions ENABLE ROW LEVEL SECURITY;

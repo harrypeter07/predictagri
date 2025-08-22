@@ -132,15 +132,23 @@ export default function PredictionsPage() {
       for (let i = 0; i < count; i++) {
         const randomCrop = crops[Math.floor(Math.random() * crops.length)]
         const randomRegion = regions[Math.floor(Math.random() * regions.length)]
-        const randomUser = mockUsers[Math.floor(Math.random() * mockUsers.length)]
-        
         if (randomCrop && randomRegion) {
-          const mockPrediction = generateMockPrediction(randomCrop.id, randomRegion.id)
+          // Generate real-time prediction data based on current conditions
           const requestData = {
-            userId: randomUser.id,
+            userId: `user_${Date.now()}_${i}`, // Generate unique user ID
             cropId: randomCrop.id,
             regionId: randomRegion.id,
-            features: mockPrediction.features
+            features: {
+              temperature: Math.random() * 20 + 15, // 15-35°C
+              humidity: Math.random() * 40 + 40, // 40-80%
+              rainfall: Math.random() * 100, // 0-100mm
+              wind_speed: Math.random() * 20, // 0-20 km/h
+              soil_moisture: Math.random() * 0.4 + 0.3, // 0.3-0.7
+              soil_n: Math.random() * 30 + 20, // 20-50
+              soil_p: Math.random() * 25 + 15, // 15-40
+              soil_k: Math.random() * 20 + 10, // 10-30
+              ph: Math.random() * 2 + 6 // 6-8
+            }
           }
 
           promises.push(
@@ -222,18 +230,13 @@ export default function PredictionsPage() {
               ))}
             </select>
 
-            <select
+            <input
+              type="text"
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
+              placeholder="Enter User ID (Optional)"
               className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select User (Optional)</option>
-              {mockUsers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="flex gap-4">

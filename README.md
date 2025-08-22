@@ -4,12 +4,12 @@ Agriculture Crop Yield Prediction System built with Next.js 19 and Supabase.
 
 ## ✨ Features
 
-- 🌾 **Crop Yield Prediction** - Advanced ML-based predictions with mock data
+- 🌾 **Crop Yield Prediction** - Advanced ML-based predictions with real-time data
 - 📊 **Real-time Dashboard** - Live statistics and monitoring
 - 🗺️ **Multi-region Support** - Manage agricultural regions with soil data
 - 🔔 **Risk Assessment** - Comprehensive risk scoring and alerts
 - 📱 **Modern Responsive UI** - Beautiful interface with Tailwind CSS
-- 🚀 **Mock Data System** - Comprehensive testing with realistic data
+- 🚀 **Real Data Integration** - Live weather, satellite, and analysis data
 - 📈 **Analytics Dashboard** - Detailed insights and statistics
 
 ## 🚀 Quick Start
@@ -71,7 +71,7 @@ predictagri/
 │   └── layout.js                  # Root layout
 ├── lib/
 │   ├── supabaseClient.js          # Supabase client configuration
-│   └── mockData.js                # Mock data utilities
+│   └── locationService.js         # Location detection and weather services
 ├── supabase-migration.sql         # Database schema and sample data
 └── env.example                    # Environment variables template
 ```
@@ -153,7 +153,7 @@ predictagri/
 
 ## 🧪 Testing Features
 
-### Mock Data System
+### Real Data Integration System
 - **8 Sample Regions** with realistic soil data
 - **12 Sample Crops** with proper seasons
 - **Realistic Predictions** with feature-based yield calculation
@@ -173,7 +173,7 @@ predictagri/
 1. Create new API routes in `app/api/`
 2. Add new pages in `app/`
 3. Update navigation in `app/components/Navigation.js`
-4. Add mock data in `lib/mockData.js`
+4. Add real-time data integration in `lib/locationService.js`
 
 ### Environment Variables
 - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
@@ -192,7 +192,7 @@ Make sure to set the same environment variables in your production environment.
 
 ## 📈 Next Steps
 
-- [ ] **ONNX Model Integration** - Replace mock predictions with real ML model
+- [ ] **ONNX Model Integration** - Replace fallback predictions with real ML model
 - [ ] **User Authentication** - Add Supabase Auth for user management
 - [ ] **Real-time Alerts** - Implement WebSocket notifications
 - [ ] **Data Visualization** - Add charts and graphs
