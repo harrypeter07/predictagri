@@ -12,6 +12,7 @@ import {
 } from './components/Charts'
 import EnhancedFarmerAnalysis from './components/EnhancedFarmerAnalysis'
 import AgriPipelinePanel from './components/AgriPipelinePanel'
+import SatelliteDataDashboard from './components/SatelliteDataDashboard'
 
 export default function Home() {
   const [predictions, setPredictions] = useState([])
@@ -335,43 +336,87 @@ export default function Home() {
       case 'farmer-analysis':
         return <EnhancedFarmerAnalysis />
       
-      case 'pipeline':
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-green-400 mb-2">🚀 Enhanced Automated Pipeline</h2>
-              <p className="text-lg text-gray-300">Advanced agricultural data processing with farmer analysis integration</p>
-            </div>
-            
-            <AgriPipelinePanel region="maharashtra" />
-            
-            <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-xl font-semibold text-white mb-4">🔧 Pipeline Features</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-                <div>
-                  <h4 className="font-medium text-white mb-2">Data Sources:</h4>
-                  <ul className="list-disc ml-5 space-y-1">
-                    <li>Google Earth Engine Satellite Data</li>
-                    <li>Weather APIs (Open-Meteo)</li>
-                    <li>NASA Agricultural Insights</li>
-                    <li>Image Processing & Analysis</li>
-                    <li>Soil Quality Assessment</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-white mb-2">Analysis Capabilities:</h4>
-                  <ul className="list-disc ml-5 space-y-1">
-                    <li>Crop Suitability Analysis</li>
-                    <li>Water Management Assessment</li>
-                    <li>Pest Risk Evaluation</li>
-                    <li>Yield Potential Prediction</li>
-                    <li>Climate Adaptation Strategies</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
+             case 'pipeline':
+         return (
+           <div className="space-y-6">
+             <div className="text-center mb-8">
+               <h2 className="text-3xl font-bold text-green-400 mb-2">🚀 Enhanced Automated Pipeline</h2>
+               <p className="text-lg text-gray-300">Advanced agricultural data processing with farmer analysis integration</p>
+             </div>
+             
+             <AgriPipelinePanel region="maharashtra" />
+             
+             <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+               <h3 className="text-xl font-semibold text-white mb-4">🔧 Pipeline Features</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                 <div>
+                   <h4 className="font-medium text-white mb-2">Data Sources:</h4>
+                   <ul className="list-disc ml-5 space-y-1">
+                     <li>Google Earth Engine Satellite Data</li>
+                     <li>Weather APIs (Open-Meteo)</li>
+                     <li>NASA Agricultural Insights</li>
+                     <li>Image Processing & Analysis</li>
+                     <li>Soil Quality Assessment</li>
+                   </ul>
+                 </div>
+                 <div>
+                   <h4 className="font-medium text-white mb-2">Analysis Capabilities:</h4>
+                   <ul className="list-disc ml-5 space-y-1">
+                     <li>Crop Suitability Analysis</li>
+                     <li>Water Management Assessment</li>
+                     <li>Pest Risk Evaluation</li>
+                     <li>Yield Potential Prediction</li>
+                     <li>Climate Adaptation Strategies</li>
+                   </ul>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )
+       
+       case 'satellite':
+         return (
+           <div className="space-y-6">
+             <div className="text-center mb-8">
+               <h2 className="text-3xl font-bold text-blue-400 mb-2">🛰️ Satellite Data Dashboard</h2>
+               <p className="text-lg text-gray-300">Real-time satellite imagery and vegetation analysis from Google Earth Engine</p>
+             </div>
+             
+             <SatelliteDataDashboard 
+               region={{ name: 'Maharashtra', lat: 19.7515, lon: 75.7139 }}
+               farmerData={{
+                 farmerId: 'demo-farmer-001',
+                 coordinates: { lat: 19.7515, lon: 75.7139 }
+               }}
+             />
+             
+             <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+               <h3 className="text-xl font-semibold text-white mb-4">🛰️ Satellite Features</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                 <div>
+                   <h4 className="font-medium text-white mb-2">Data Types:</h4>
+                   <ul className="list-disc ml-5 space-y-1">
+                     <li>NDVI (Normalized Difference Vegetation Index)</li>
+                     <li>True Color RGB Satellite Images</li>
+                     <li>Land Surface Temperature</li>
+                     <li>Soil Moisture & Composition</li>
+                     <li>Land Use Classification</li>
+                   </ul>
+                 </div>
+                 <div>
+                   <h4 className="font-medium text-white mb-2">Satellite Sources:</h4>
+                   <ul className="list-disc ml-5 space-y-1">
+                     <li>Sentinel-2 (10m resolution)</li>
+                     <li>MODIS (250m-1km resolution)</li>
+                     <li>SMAP (Soil Moisture)</li>
+                     <li>ESA WorldCover (Land Use)</li>
+                     <li>SoilGrids250m (Soil Properties)</li>
+                   </ul>
+                 </div>
+               </div>
+             </div>
+           </div>
+         )
       
       default:
         return null
@@ -420,6 +465,16 @@ export default function Home() {
               }`}
             >
               🚀 Pipeline
+            </button>
+            <button
+              onClick={() => setActiveTab('satellite')}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'satellite'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              🛰️ Satellite
             </button>
           </div>
 

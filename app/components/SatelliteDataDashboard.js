@@ -1,407 +1,343 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Line, Bar } from 'react-chartjs-2'
+import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 
-export const SatelliteDataDashboard = ({ region }) => {
+const SatelliteDataDashboard = ({ region, farmerData }) => {
   const [satelliteData, setSatelliteData] = useState(null)
-  const [serviceStatus, setServiceStatus] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [selectedDataType, setSelectedDataType] = useState('comprehensive')
-  const [historicalData, setHistoricalData] = useState([])
-  const [showHistorical, setShowHistorical] = useState(false)
+  const [selectedImageType, setSelectedImageType] = useState('all')
 
   useEffect(() => {
-    if (region?.id) {
+    if (region || farmerData) {
       fetchSatelliteData()
-      fetchServiceStatus()
     }
-  }, [region, selectedDataType])
+  }, [region, farmerData])
 
   const fetchSatelliteData = async () => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      setLoading(true)
-      const response = await fetch(
-        `/api/satellite?regionId=${region.id}&dataType=${selectedDataType}`
-      )
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      // Store satellite data in database for historical tracking
-      try {
-        await fetch('/api/satellite/store', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            regionId: region.id,
-            dataType: selectedDataType,
-            satelliteData: data.data,
-            timestamp: new Date().toISOString()
-          })
+      const coordinates = farmerData?.coordinates || region
+      const response = await fetch('/api/pipeline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          farmerData: {
+            farmerId: farmerData?.farmerId || 'region_analysis',
+            coordinates: coordinates
+          }
         })
-      } catch (dbError) {
-        console.warn('Failed to store satellite data in database:', dbError)
-        // Continue with display even if storage fails
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch satellite data')
       }
-      
-      setSatelliteData(data.data)
-      setError(null)
+
+      const data = await response.json()
+      setSatelliteData(data)
     } catch (err) {
-      console.error('Failed to fetch satellite data:', err)
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchServiceStatus = async () => {
-    try {
-      const response = await fetch('/api/satellite/status')
-      if (response.ok) {
-        const data = await response.json()
-        setServiceStatus(data.status)
-      }
-    } catch (err) {
-      console.error('Failed to fetch service status:', err)
-    }
-  }
-
-  const fetchHistoricalData = async () => {
-    if (!region?.id) return
+  const getImageTypes = () => {
+    if (!satelliteData?.dataCollection?.environmental) return []
     
-    try {
-      const response = await fetch(`/api/satellite/history?regionId=${region.id}&dataType=${selectedDataType}&limit=30`)
-      if (response.ok) {
-        const data = await response.json()
-        setHistoricalData(data.data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch historical data:', err)
+    const types = []
+    if (satelliteData.dataCollection.environmental.ndvi?.satelliteImage) {
+      types.push('ndvi')
     }
-  }
-
-  const getHealthColor = (health) => {
-    switch (health) {
-      case 'healthy': return 'text-green-400'
-      case 'attention': return 'text-yellow-400'
-      case 'warning': return 'text-orange-400'
-      case 'critical': return 'text-red-400'
-      case 'degraded': return 'text-purple-400'
-      default: return 'text-gray-400'
+    if (satelliteData.dataCollection.environmental.rgbImage?.imageUrl) {
+      types.push('rgb')
     }
-  }
-
-  const getHealthIcon = (health) => {
-    switch (health) {
-      case 'healthy': return '🟢'
-      case 'attention': return '🟡'
-      case 'warning': return '🟠'
-      case 'critical': return '🔴'
-      case 'degraded': return '🟣'
-      default: return '⚪'
+    if (satelliteData.dataCollection.environmental.landSurfaceTemperature?.satelliteImage) {
+      types.push('temperature')
     }
+    return types
   }
 
-  const getQualityColor = (quality) => {
-    return quality === 'high' ? 'text-green-400' : 'text-yellow-400'
+  const renderSatelliteImage = (imageData, type) => {
+    if (!imageData?.imageUrl && !imageData?.satelliteImage) {
+      return (
+        <div className="bg-gray-100 rounded-lg p-8 text-center">
+          <p className="text-gray-500">No satellite image available for {type}</p>
+        </div>
+      )
+    }
+
+    const imageUrl = imageData.imageUrl || imageData.satelliteImage
+    const imageType = imageData.imageType || type.toUpperCase()
+    const coordinates = imageData.coordinates || region || farmerData?.coordinates
+
+    return (
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="p-4 bg-gradient-to-r from-blue-600 to-green-600 text-white">
+          <h3 className="text-lg font-semibold">{imageType} Satellite Image</h3>
+          <p className="text-sm opacity-90">
+            {coordinates?.lat?.toFixed(4)}, {coordinates?.lon?.toFixed(4)}
+          </p>
+        </div>
+        
+        <div className="relative">
+          <Image
+            src={imageUrl}
+            alt={`${imageType} satellite image`}
+            width={512}
+            height={512}
+            className="w-full h-auto"
+            onError={(e) => {
+              e.target.src = 'https://via.placeholder.com/512x512/4CAF50/FFFFFF?text=Image+Loading+Failed'
+            }}
+          />
+          
+          {/* Image overlay with metadata */}
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white p-3">
+            <div className="flex justify-between items-center text-sm">
+              <span>Source: {imageData.source || 'Google Earth Engine'}</span>
+              <span>Quality: {imageData.quality || 'Unknown'}</span>
+            </div>
+            {imageData.metadata && (
+              <div className="text-xs mt-1 opacity-90">
+                {imageData.metadata.satellite && (
+                  <span className="mr-3">Satellite: {imageData.metadata.satellite}</span>
+                )}
+                {imageData.metadata.resolution && (
+                  <span className="mr-3">Resolution: {imageData.metadata.resolution}</span>
+                )}
+                {imageData.metadata.cloudCover && imageData.metadata.cloudCover !== 'Unknown' && (
+                  <span>Cloud Cover: {imageData.metadata.cloudCover}%</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Image controls */}
+        <div className="p-4 bg-gray-50">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              <span>Timestamp: {new Date(imageData.timestamp).toLocaleString()}</span>
+            </div>
+            <button
+              onClick={() => window.open(imageUrl, '_blank')}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+              View Full Size
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const getQualityIcon = (quality) => {
-    return quality === 'high' ? '✅' : '⚠️'
+  const renderNDVICard = () => {
+    if (!satelliteData?.dataCollection?.environmental?.ndvi) return null
+    
+    const ndviData = satelliteData.dataCollection.environmental.ndvi
+    const ndviValue = ndviData.ndvi
+    const interpretation = ndviData.interpretation
+    
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-800">Vegetation Index (NDVI)</h3>
+          <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+            ndviValue > 0.6 ? 'bg-green-100 text-green-800' :
+            ndviValue > 0.4 ? 'bg-yellow-100 text-yellow-800' :
+            ndviValue > 0.2 ? 'bg-orange-100 text-orange-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+            {ndviValue.toFixed(3)}
+          </div>
+        </div>
+        
+        <div className="space-y-3">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Interpretation:</span>
+            <span className="font-medium">{interpretation}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Source:</span>
+            <span className="font-medium">{ndviData.source}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Quality:</span>
+            <span className="font-medium">{ndviData.quality}</span>
+          </div>
+        </div>
+
+        {/* NDVI Scale Bar */}
+        <div className="mt-4">
+          <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Low (0.0)</span>
+            <span>High (1.0)</span>
+          </div>
+          <div className="w-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-3 rounded-full">
+            <div 
+              className="bg-white w-2 h-3 rounded-full border-2 border-gray-800 relative"
+              style={{ left: `${ndviValue * 100}%`, transform: 'translateX(-50%)' }}
+            >
+              <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
+                {ndviValue.toFixed(3)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderImageGallery = () => {
+    const imageTypes = getImageTypes()
+    if (imageTypes.length === 0) return null
+
+    const filteredTypes = selectedImageType === 'all' ? imageTypes : [selectedImageType]
+    
+    return (
+      <div className="space-y-6">
+        {/* Image Type Selector */}
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setSelectedImageType('all')}
+            className={`px-4 py-2 rounded-lg font-medium ${
+              selectedImageType === 'all' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            All Images
+          </button>
+          {imageTypes.map(type => (
+            <button
+              key={type}
+              onClick={() => setSelectedImageType(type)}
+              className={`px-4 py-2 rounded-lg font-medium capitalize ${
+                selectedImageType === type 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+
+        {/* Image Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredTypes.map(type => {
+            let imageData
+            switch (type) {
+              case 'ndvi':
+                imageData = satelliteData?.dataCollection?.environmental?.ndvi
+                break
+              case 'rgb':
+                imageData = satelliteData?.dataCollection?.environmental?.rgbImage
+                break
+              case 'temperature':
+                imageData = satelliteData?.dataCollection?.environmental?.landSurfaceTemperature
+                break
+              default:
+                return null
+            }
+            
+            return (
+              <div key={type}>
+                {renderSatelliteImage(imageData, type)}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
     return (
-      <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-          <span className="ml-3 text-gray-300">Loading satellite data...</span>
-        </div>
+      <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Fetching satellite data from Google Earth Engine...</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-        <div className="text-center">
-          <p className="text-red-400 mb-3">Failed to load satellite data</p>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <button 
-            onClick={fetchSatelliteData}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            Retry
-          </button>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <div className="text-red-600 mb-2">
+          <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
         </div>
+        <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Satellite Data</h3>
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={fetchSatelliteData}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  if (!satelliteData) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-8 text-center">
+        <div className="text-gray-400 mb-4">
+          <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-600 mb-2">No Satellite Data Available</h3>
+        <p className="text-gray-500">Select a region or provide farmer data to view satellite imagery</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold text-white">🛰️ Satellite Data Dashboard</h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => {
-              setShowHistorical(!showHistorical)
-              if (!showHistorical) {
-                fetchHistoricalData()
-              }
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-          >
-            {showHistorical ? 'Hide' : 'Show'} Historical Data
-          </button>
-          <span className={`text-sm ${getHealthColor(serviceStatus?.health)}`}>
-            {getHealthIcon(serviceStatus?.health)} {serviceStatus?.health}
-          </span>
-        </div>
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-lg p-6 text-white">
+        <h2 className="text-2xl font-bold mb-2">🌍 Satellite Data Dashboard</h2>
+        <p className="opacity-90">
+          Real-time satellite imagery and vegetation analysis from Google Earth Engine
+        </p>
       </div>
 
-      {/* Service Status */}
-      {serviceStatus && (
-        <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
-          <h4 className="text-lg font-semibold text-white mb-3">📊 Service Status</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-gray-400">API Calls</p>
-              <p className="text-white font-bold">
-                {serviceStatus.apiCallCount}/{serviceStatus.maxApiCalls}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-400">Remaining</p>
-              <p className="text-white font-bold">{serviceStatus.remainingCalls}</p>
-            </div>
-            <div>
-              <p className="text-gray-400">Errors</p>
-              <p className="text-white font-bold">{serviceStatus.errorCount}</p>
-            </div>
-            <div>
-              <p className="text-gray-400">Mode</p>
-              <p className={`font-bold ${serviceStatus.fallbackMode ? 'text-yellow-400' : 'text-green-400'}`}>
-                {serviceStatus.fallbackMode ? 'Fallback' : 'GEE'}
-              </p>
-            </div>
-          </div>
-          {serviceStatus.recommendations.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-600">
-              <p className="text-xs text-gray-400 mb-2">Recommendations:</p>
-              <ul className="text-xs text-gray-300 space-y-1">
-                {serviceStatus.recommendations.map((rec, index) => (
-                  <li key={index}>• {rec}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+      {/* NDVI Card */}
+      {renderNDVICard()}
 
-      {/* Data Type Selector */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Data Type
-        </label>
-        <select
-          value={selectedDataType}
-          onChange={(e) => setSelectedDataType(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="comprehensive">Comprehensive Data</option>
-          <option value="ndvi">NDVI (Vegetation Index)</option>
-          <option value="temperature">Land Surface Temperature</option>
-          <option value="soil-moisture">Soil Moisture</option>
-          <option value="vegetation-health">Vegetation Health Index</option>
-        </select>
-      </div>
+      {/* Satellite Image Gallery */}
+      {renderImageGallery()}
 
-      {/* Satellite Data Display */}
-      {satelliteData && (
-        <div className="space-y-6">
-          {/* Data Quality Indicator */}
-          <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <span className="text-gray-300">Data Quality:</span>
-            <span className={`font-semibold ${getQualityColor(satelliteData.quality)}`}>
-              {getQualityIcon(satelliteData.quality)} {satelliteData.quality.toUpperCase()}
-            </span>
-          </div>
-
-          {/* Data Source */}
-          <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <span className="text-gray-300">Data Source:</span>
-            <span className="text-white font-semibold">{satelliteData.source}</span>
-          </div>
-
-          {/* Historical Data Display */}
-          {showHistorical && historicalData.length > 0 && (
-            <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
-              <h4 className="text-lg font-semibold text-white mb-3">📈 Historical Trends</h4>
-              <div className="space-y-3">
-                {historicalData.slice(0, 10).map((record, index) => (
-                  <div key={record.id} className="flex justify-between items-center p-2 bg-gray-700 rounded">
-                    <div className="text-sm text-gray-300">
-                      {new Date(record.timestamp).toLocaleDateString()}
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      {record.data_type} - {record.satellite_data?.quality || 'Unknown'}
-                    </div>
-                  </div>
-                ))}
+      {/* Data Summary */}
+      {satelliteData?.dataCollection?.environmental && (
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Data Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">
+                {satelliteData.dataCollection.environmental.dataTypes?.length || 0}
               </div>
-              <div className="mt-3 text-xs text-gray-500 text-center">
-                Showing last {Math.min(historicalData.length, 10)} records
-              </div>
+              <div className="text-sm text-gray-600">Data Types</div>
             </div>
-          )}
-
-          {/* Main Data Display */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {selectedDataType === 'comprehensive' && (
-              <>
-                <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                  <h5 className="text-lg font-semibold text-white mb-2">🌱 NDVI</h5>
-                  <p className="text-3xl font-bold text-green-400">
-                    {(satelliteData.ndvi * 100).toFixed(1)}%
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Vegetation density index
-                  </p>
-                </div>
-                
-                <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                  <h5 className="text-lg font-semibold text-white mb-2">🌡️ Temperature</h5>
-                  <p className="text-3xl font-bold text-red-400">
-                    {satelliteData.landSurfaceTemperature?.toFixed(1)}°C
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Land surface temperature
-                  </p>
-                </div>
-                
-                <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                  <h5 className="text-lg font-semibold text-white mb-2">💧 Soil Moisture</h5>
-                  <p className="text-3xl font-bold text-blue-400">
-                    {(satelliteData.soilMoisture * 100).toFixed(1)}%
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Soil moisture content
-                  </p>
-                </div>
-                
-                <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                  <h5 className="text-lg font-semibold text-white mb-2">📊 Data Types</h5>
-                  <div className="space-y-1">
-                    {satelliteData.dataTypes?.map((type, index) => (
-                      <p key={index} className="text-sm text-gray-300">• {type}</p>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {selectedDataType === 'ndvi' && (
-              <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                <h5 className="text-lg font-semibold text-white mb-2">🌱 NDVI Data</h5>
-                <p className="text-3xl font-bold text-green-400">
-                  {(satelliteData.ndvi * 100).toFixed(1)}%
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Normalized Difference Vegetation Index
-                </p>
-                <div className="mt-3">
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-green-400 h-2 rounded-full" 
-                      style={{ width: `${satelliteData.ndvi * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">
+                {satelliteData.dataCollection.environmental.quality || 'Unknown'}
               </div>
-            )}
-
-            {selectedDataType === 'temperature' && (
-              <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                <h5 className="text-lg font-semibold text-white mb-2">🌡️ Temperature Data</h5>
-                <p className="text-3xl font-bold text-red-400">
-                  {satelliteData.temperature?.toFixed(1)}°C
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Land surface temperature from satellite
-                </p>
+              <div className="text-sm text-gray-600">Data Quality</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">
+                {new Date(satelliteData.dataCollection.environmental.timestamp).toLocaleDateString()}
               </div>
-            )}
-
-            {selectedDataType === 'soil-moisture' && (
-              <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                <h5 className="text-lg font-semibold text-white mb-2">💧 Soil Moisture Data</h5>
-                <p className="text-3xl font-bold text-blue-400">
-                  {(satelliteData.soilMoisture * 100).toFixed(1)}%
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Soil moisture content from SMAP satellite
-                </p>
-              </div>
-            )}
-
-            {selectedDataType === 'vegetation-health' && (
-              <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
-                <h5 className="text-lg font-semibold text-white mb-2">🌿 Vegetation Health</h5>
-                <p className="text-3xl font-bold text-green-400">
-                  {(satelliteData.vhi * 100).toFixed(1)}%
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Vegetation Health Index
-                </p>
-                <div className="mt-3 p-2 bg-gray-700 rounded">
-                  <p className="text-sm text-white">
-                    Status: <span className="font-semibold">{satelliteData.healthStatus}</span>
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Timestamp */}
-          <div className="text-center text-sm text-gray-400">
-            Last updated: {new Date(satelliteData.timestamp).toLocaleString()}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex space-x-3">
-            <button 
-              onClick={fetchSatelliteData}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-            >
-              🔄 Refresh Data
-            </button>
-            <button 
-              onClick={fetchServiceStatus}
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-            >
-              📊 Update Status
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Fallback Mode Warning */}
-      {serviceStatus?.fallbackMode && (
-        <div className="mt-6 p-4 bg-yellow-900 border border-yellow-600 rounded-lg">
-          <div className="flex items-center">
-            <span className="text-2xl mr-3">⚠️</span>
-            <div>
-              <h4 className="text-lg font-semibold text-yellow-200">Fallback Mode Active</h4>
-              <p className="text-yellow-100 text-sm">
-                Google Earth Engine is unavailable. Using fallback data for demonstration purposes.
-              </p>
+              <div className="text-sm text-gray-600">Last Updated</div>
             </div>
           </div>
         </div>

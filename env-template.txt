@@ -1,0 +1,39 @@
+# 🌍 Google Earth Engine API Keys (Required for Satellite Images)
+# 1. Go to https://developers.google.com/earth-engine/guides/service_account
+# 2. Create a service account and download JSON credentials
+GOOGLE_EARTH_ENGINE_CLIENT_EMAIL=your_service_account_email@project.iam.gserviceaccount.com
+GOOGLE_EARTH_ENGINE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour private key here\n-----END PRIVATE KEY-----"
+
+# 🚀 NASA API Key (Required for Agricultural Insights)
+# 1. Go to https://api.nasa.gov/
+# 2. Generate an API key
+NASA_API_KEY=your_nasa_api_key_here
+
+# 🌤️ OpenWeather API Keys (Required for Weather Data)
+# 1. Go to https://openweathermap.org/api
+# 2. Generate an API key
+OPENWEATHER_API_KEY=your_openweather_api_key_here
+NEXT_PUBLIC_OPENWEATHER_API_KEY=your_openweather_api_key_here
+
+# 🗺️ OpenCage API Key (Required for Geocoding)
+# 1. Go to https://opencagedata.com/
+# 2. Generate an API key
+OPENCAGE_API_KEY=your_opencage_api_key_here
+
+# ⏰ TimezoneDB API Key (Required for Timezone Data)
+# 1. Go to https://timezonedb.com/
+# 2. Generate an API key
+TIMEZONE_API_KEY=your_timezone_api_key_here
+
+# 📱 Twilio API Keys (Required for SMS Alerts)
+# 1. Go to https://www.twilio.com/
+# 2. Get Account SID and Auth Token
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+TWILIO_PHONE_NUMBER=your_twilio_phone_number_here
+
+# 🔧 Debug Mode (Optional)
+# Set to 'true' to enable detailed logging
+DEBUG_GEE=false
+DEBUG_NASA=false
+DEBUG_WEATHER=false

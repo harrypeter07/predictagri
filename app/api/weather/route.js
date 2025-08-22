@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import OpenMeteoService from '../../../lib/openMeteoService'
+import { openMeteoService } from '../../../lib/openMeteoService.js'
 import { Logger } from '../../../lib/logger'
 
 export async function GET(request) {
@@ -9,13 +9,11 @@ export async function GET(request) {
   const logger = new Logger({ route: '/api/weather', lat, lon })
 
   try {
-    const svc = new OpenMeteoService()
-
     logger.info('weather_request_received')
 
     const [current, daily] = await Promise.all([
-      svc.getCurrent(lat, lon),
-      svc.getDaily(lat, lon)
+      openMeteoService.getCurrent(lat, lon),
+      openMeteoService.getDaily(lat, lon)
     ])
 
     logger.info('weather_success')

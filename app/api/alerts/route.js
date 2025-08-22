@@ -19,7 +19,6 @@ export async function POST(request) {
       }, { status: 400 })
     }
     
-    const twilioService = new TwilioService()
     const result = await twilioService.sendAgriculturalAlert(phoneNumber, alertData, language)
     
     if (result.success) {
@@ -47,8 +46,6 @@ export async function GET(request) {
   logger.info('alert_status_request', { phoneNumber, language })
   
   try {
-    const twilioService = new TwilioService()
-    
     // Return alert capabilities
     return NextResponse.json({
       success: true,

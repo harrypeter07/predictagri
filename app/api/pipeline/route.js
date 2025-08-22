@@ -20,8 +20,7 @@ export async function POST(request) {
     if (farmerData) {
       // Use enhanced automated pipeline for farmer data
       
-      const enhancedPipeline = new EnhancedAutomatedPipeline()
-      result = await enhancedPipeline.executeFarmerPipeline(farmerData)
+      result = await enhancedAutomatedPipeline.executeFarmerPipeline(farmerData)
       
       // Transform enhanced pipeline result to match pipeline structure
       if (result.success) {
@@ -77,8 +76,7 @@ export async function POST(request) {
       }
     } else {
       // Use standard pipeline for region-based analysis
-      const pipeline = new AutomatedPipeline()
-      result = await pipeline.executePipeline(region)
+      result = await automatedPipeline.executePipeline(region)
     }
     
     if (result.success) {
@@ -155,13 +153,12 @@ export async function GET(request) {
     
     if (farmerMode) {
       // Check enhanced pipeline status
-      const enhancedPipeline = new EnhancedAutomatedPipeline()
       const fallbackFarmerData = {
         farmerId: 'status_check',
         coordinates: { lat: 21.1458, lon: 79.0882 } // Default to Nagpur
       }
       
-      result = await enhancedPipeline.executeFarmerPipeline(fallbackFarmerData)
+      result = await enhancedAutomatedPipeline.executeFarmerPipeline(fallbackFarmerData)
       
       if (result.success) {
         result = {
@@ -178,8 +175,7 @@ export async function GET(request) {
       }
     } else {
       // Use standard pipeline for status check
-      const pipeline = new AutomatedPipeline()
-      result = await pipeline.executePipeline(region)
+      result = await automatedPipeline.executePipeline(region)
     }
     
     return NextResponse.json({

@@ -16,7 +16,6 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Audio input is required' }, { status: 400 })
     }
     
-    const voiceAssistant = new VoiceAssistant()
     const result = await voiceAssistant.processVoiceInput(audioInput, language, context)
     
     if (result.success) {
@@ -43,7 +42,6 @@ export async function GET(request) {
   logger.info('voice_commands_request', { language })
   
   try {
-    const voiceAssistant = new VoiceAssistant()
     const commands = voiceAssistant.getVoiceCommands(language)
     
     return NextResponse.json({
