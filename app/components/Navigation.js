@@ -11,7 +11,8 @@ export default function Navigation() {
     { href: '/regions', label: 'Regions', icon: '🗺️' },
     { href: '/crops', label: 'Crops', icon: '🌾' },
     { href: '/predictions', label: 'Predictions', icon: '📊' },
-    { href: '/image-analysis', label: 'Image Analysis', icon: '🔍' }
+    { href: '/image-analysis', label: 'Image Analysis', icon: '🔍' },
+    { href: '/onnx-test', label: 'ONNX Test', icon: '🤖' }
   ]
 
   return (

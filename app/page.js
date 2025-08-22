@@ -136,7 +136,7 @@ export default function Home() {
               <Link href="/predictions" className="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg text-center transition-colors border border-blue-500">
                 <div className="text-3xl mb-2">📊</div>
                 <h3 className="font-semibold">Generate Predictions</h3>
-                <p className="text-sm opacity-90">Create new crop yield predictions</p>
+                <p className="text-sm opacity-90">Create new crop yield predictions using ONNX ML model</p>
               </Link>
               
               <Link href="/regions" className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg text-center transition-colors border border-green-500">
