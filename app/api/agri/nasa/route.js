@@ -25,8 +25,8 @@ export async function GET(request) {
       svc.getEarthImagery(lat, lon)
     ])
 
-    if (disasters?.isMockData) logger.warn('eonet_fallback_mock')
-    if (imagery?.isMockData || imagery?.source === 'Mock Data') logger.warn('earth_imagery_fallback_mock')
+    if (disasters?.isFallbackData) logger.warn('eonet_fallback_data')
+    if (imagery?.isFallbackData || imagery?.source === 'Fallback Data') logger.warn('earth_imagery_fallback_data')
 
     logger.info('nasa_success')
 
