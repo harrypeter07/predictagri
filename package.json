@@ -2,7 +2,6 @@
   "name": "sandip",
   "version": "0.1.0",
   "private": true,
-
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
@@ -21,6 +20,7 @@
     "jimp": "^1.6.0",
     "multer": "^2.0.2",
     "next": "15.5.0",
+    "onnxruntime-web": "^1.22.0",
     "react": "19.1.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "19.1.0",

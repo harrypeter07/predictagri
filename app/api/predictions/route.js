@@ -58,7 +58,7 @@ export async function POST(request) {
     
     try {
       // Import ONNX client dynamically (server-side)
-      const { runPrediction, mapFeaturesToOnnxSchema } = await import('../../../lib/onnxClient')
+      const { runPrediction, mapFeaturesToOnnxSchema } = await import('../../../lib/onnxClient.js')
       
       // Map features to ONNX schema format
       const onnxFeatures = mapFeaturesToOnnxSchema(

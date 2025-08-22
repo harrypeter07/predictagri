@@ -306,6 +306,7 @@ predictagri/
 - **React 19** with modern hooks
 - **Tailwind CSS** for responsive design
 - **Web Speech API** for voice integration
+- **ONNX Runtime Web** for client-side ML inference
 
 ### **Backend & APIs**
 - **Supabase** for database and real-time features
@@ -319,6 +320,7 @@ predictagri/
 - **Real-time subscriptions** for live updates
 - **Automated pipelines** for data processing
 - **Fallback systems** for API failures
+- **ONNX Model Inference** for real-time predictions
 
 ### **Deployment & Infrastructure**
 - **Vercel-ready** deployment
@@ -327,6 +329,13 @@ predictagri/
 - **Error handling** and fallback mechanisms
 
 ## 🧪 **Testing & Development Features**
+
+### **ONNX Model Integration**
+- **Client-side ML Inference** using WebAssembly for privacy and performance
+- **Real-time Predictions** with pre-trained agricultural yield model
+- **Feature Schema Support** for soil pH, crop type, season, and region
+- **Fallback Mechanisms** to ML-based calculations when ONNX fails
+- **Model Testing Interface** at `/onnx-test` for direct model validation
 
 ### **Real Data Integration**
 - **8 Sample Regions** with realistic soil and climate data
@@ -365,7 +374,7 @@ Ensure all environment variables are properly configured in your production envi
 ## 📈 **Current Status & Roadmap**
 
 ### **✅ Implemented Features**
-- Complete agricultural prediction system
+- Complete agricultural prediction system with ONNX ML model
 - Google Earth Engine integration
 - NASA data integration
 - Voice-powered assistant
@@ -375,6 +384,7 @@ Ensure all environment variables are properly configured in your production envi
 - Risk assessment algorithms
 - Multi-region support
 - Advanced analytics dashboard
+- Client-side machine learning inference
 
 ### **🔄 In Development**
 - Enhanced ML model integration
@@ -384,7 +394,7 @@ Ensure all environment variables are properly configured in your production envi
 - API rate limiting optimization
 
 ### **📋 Future Enhancements**
-- **ONNX Model Integration** - Replace fallback predictions with real ML models
+- **Enhanced ML Model Training** - Continuous model improvement with new data
 - **User Authentication** - Add Supabase Auth for user management
 - **Real-time Alerts** - Implement WebSocket notifications
 - **Advanced Visualization** - Add interactive charts and graphs

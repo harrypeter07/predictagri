@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadSchema, runPrediction, mapFeaturesToOnnxSchema } from "../../lib/onnxClient";
+import { loadSchema, runPrediction, mapFeaturesToOnnxSchema } from "../../lib/onnxClient.js";
 
 export default function OnnxTestPage() {
   const [schema, setSchema] = useState(null);
