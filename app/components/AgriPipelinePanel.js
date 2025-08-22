@@ -6,7 +6,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [pipelineMode, setPipelineMode] = useState('standard') // 'standard' or 'enhanced'
+  const [pipelineMode, setPipelineMode] = useState('standard') // 'standard' or 'farmer'
   const [farmerData, setFarmerData] = useState({
     farmerId: '',
     coordinates: { lat: 21.1458, lon: 79.0882 },
@@ -20,9 +20,8 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
       
       let requestBody = {}
       
-      if (pipelineMode === 'enhanced') {
+      if (pipelineMode === 'farmer') {
         requestBody = {
-          useEnhanced: true,
           farmerData: {
             ...farmerData,
             coordinates: {
@@ -56,8 +55,8 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
       setLoading(true)
       setError(null)
       
-      const url = pipelineMode === 'enhanced' 
-        ? '/api/pipeline?enhanced=true'
+      const url = pipelineMode === 'farmer' 
+        ? '/api/pipeline?farmer=true'
         : `/api/pipeline?region=${region}`
       
       const res = await fetch(url)
@@ -107,9 +106,9 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
             🌍 Standard Pipeline
           </button>
           <button
-            onClick={() => setPipelineMode('enhanced')}
+            onClick={() => setPipelineMode('farmer')}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              pipelineMode === 'enhanced'
+              pipelineMode === 'farmer'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-300 hover:text-white hover:bg-gray-700'
             }`}
@@ -118,7 +117,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
           </button>
         </div>
 
-        {pipelineMode === 'enhanced' && (
+        {pipelineMode === 'farmer' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Farmer ID</label>
@@ -175,7 +174,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
               </div>
               <div>
                 <p className="text-gray-400">Mode</p>
-                <p className="text-white">{pipelineMode === 'enhanced' ? 'Enhanced' : 'Standard'}</p>
+                <p className="text-white">{pipelineMode === 'farmer' ? 'Enhanced Farmer' : 'Standard'}</p>
               </div>
               <div>
                 <p className="text-gray-400">Status</p>
@@ -188,8 +187,8 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
             </div>
           </div>
 
-          {pipelineMode === 'enhanced' ? (
-            // Enhanced Pipeline Results
+          {pipelineMode === 'farmer' ? (
+            // Enhanced Farmer Analysis Results
             <div className="space-y-4">
               {result.insights && (
                 <div className="bg-gray-800 rounded-lg p-4">
@@ -197,26 +196,26 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
                       <p><span className="text-gray-400">Soil Health:</span> 
-                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getHealthColor(result.insights.soilHealth?.overall)}`}>
-                          {result.insights.soilHealth?.overall || 'Unknown'}
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getHealthColor(result.insights[0]?.data?.overall)}`}>
+                          {result.insights[0]?.data?.overall || 'Unknown'}
                         </span>
                       </p>
                       <p><span className="text-gray-400">Crop Suitability:</span> 
-                        <span className="text-white ml-2">{result.insights.cropSuitability?.bestCrops?.length || 0} recommended crops</span>
+                        <span className="text-white ml-2">{result.insights[1]?.data?.bestCrops?.length || 0} recommended crops</span>
                       </p>
                       <p><span className="text-gray-400">Water Management:</span> 
-                        <span className="text-white ml-2">{result.insights.waterManagement?.irrigationNeeds || 'Unknown'}</span>
+                        <span className="text-white ml-2">{result.insights[2]?.data?.irrigationNeeds || 'Unknown'}</span>
                       </p>
                     </div>
                     <div>
                       <p><span className="text-gray-400">Pest Risk:</span> 
-                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getRiskColor(result.insights.pestRisk?.overall)}`}>
-                          {result.insights.pestRisk?.overall || 'Unknown'}
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getRiskColor(result.predictions[1]?.data?.overall)}`}>
+                          {result.predictions[1]?.data?.overall || 'Unknown'}
                         </span>
                       </p>
                       <p><span className="text-gray-400">Yield Potential:</span> 
-                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getHealthColor(result.insights.yieldPotential?.overall)}`}>
-                          {result.insights.yieldPotential?.overall || 'Unknown'}
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${getHealthColor(result.predictions[0]?.data?.overall)}`}>
+                          {result.predictions[0]?.data?.overall || 'Unknown'}
                         </span>
                       </p>
                     </div>
@@ -224,16 +223,16 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                 </div>
               )}
 
-              {result.recommendations && result.recommendations.length > 0 && (
+              {result.alerts && result.alerts.length > 0 && (
                 <div className="bg-gray-800 rounded-lg p-4">
-                  <h4 className="font-medium text-white mb-3">💡 Top Recommendations</h4>
+                  <h4 className="font-medium text-white mb-3">🚨 High Priority Alerts</h4>
                   <div className="space-y-2">
-                    {result.recommendations.slice(0, 3).map((rec, index) => (
+                    {result.alerts.slice(0, 3).map((alert, index) => (
                       <div key={index} className="flex items-start gap-2">
-                        <span className={`px-2 py-1 rounded text-xs ${getPriorityColor(rec.priority)}`}>
-                          {rec.priority}
+                        <span className="px-2 py-1 rounded text-xs bg-red-600 text-white">
+                          High
                         </span>
-                        <p className="text-sm text-gray-300">{rec.action}</p>
+                        <p className="text-sm text-gray-300">{alert.message}</p>
                       </div>
                     ))}
                   </div>
@@ -296,15 +295,6 @@ function getRiskColor(risk) {
   switch (risk?.toLowerCase()) {
     case 'high': return 'bg-red-600 text-white'
     case 'moderate': return 'bg-yellow-600 text-white'
-    case 'low': return 'bg-green-600 text-white'
-    default: return 'bg-gray-600 text-white'
-  }
-}
-
-function getPriorityColor(priority) {
-  switch (priority?.toLowerCase()) {
-    case 'high': return 'bg-red-600 text-white'
-    case 'medium': return 'bg-yellow-600 text-white'
     case 'low': return 'bg-green-600 text-white'
     default: return 'bg-gray-600 text-white'
   }
