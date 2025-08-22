@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { generateMockPrediction, mockUsers } from '../../lib/mockData'
+import { 
+  YieldTrendChart, 
+  RegionalPerformanceChart, 
+  CropDistributionChart, 
+  ProductivityZoneMap, 
+  WeatherAlertSystem 
+} from '../components/Charts'
 
 export default function PredictionsPage() {
   const [predictions, setPredictions] = useState([])
@@ -141,21 +148,21 @@ export default function PredictionsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Predictions Management</h1>
-          <p className="text-lg text-gray-300">Generate and manage crop yield predictions</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Predictions Management</h1>
+          <p className="text-lg text-gray-600">Generate and manage crop yield predictions</p>
         </header>
 
         {/* Prediction Generator */}
-        <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-white">Generate New Prediction</h2>
+        <div className="bg-gray-900 rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Generate New Prediction</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <select
               value={selectedCrop}
               onChange={(e) => setSelectedCrop(e.target.value)}
-              className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="border rounded px-3 py-2"
             >
               <option value="">Select Crop</option>
               {crops.map((crop) => (
@@ -168,7 +175,7 @@ export default function PredictionsPage() {
             <select
               value={selectedRegion}
               onChange={(e) => setSelectedRegion(e.target.value)}
-              className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="border rounded px-3 py-2"
             >
               <option value="">Select Region</option>
               {regions.map((region) => (
@@ -181,7 +188,7 @@ export default function PredictionsPage() {
             <select
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
-              className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="border rounded px-3 py-2"
             >
               <option value="">Select User (Optional)</option>
               {mockUsers.map((user) => (
@@ -196,76 +203,97 @@ export default function PredictionsPage() {
             <button
               onClick={generatePrediction}
               disabled={loading || !selectedCrop || !selectedRegion}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg"
             >
               {loading ? 'Generating...' : 'Generate Prediction'}
             </button>
             <button
               onClick={() => generateMultiplePredictions(5)}
               disabled={loading || crops.length === 0 || regions.length === 0}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
+              className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white px-4 py-2 rounded-lg"
             >
               Generate 5 Random Predictions
             </button>
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded">
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               {error}
             </div>
           )}
         </div>
 
+        {/* Advanced Analytics Dashboard */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-white mb-6 text-center">📊 Advanced Analytics Dashboard</h2>
+          
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <YieldTrendChart data={predictions} />
+            <RegionalPerformanceChart regions={regions} predictions={predictions} />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <CropDistributionChart crops={crops} predictions={predictions} />
+            <ProductivityZoneMap regions={regions} predictions={predictions} />
+          </div>
+        </div>
+
+        {/* Weather Alert System */}
+        <div className="mb-8">
+          <WeatherAlertSystem predictions={predictions} />
+        </div>
+
         {/* Predictions List */}
-        <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
+        <div className="bg-gray-900 rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-white">Recent Predictions</h2>
-            <span className="text-sm text-gray-400">
+            <h2 className="text-2xl font-semibold">Recent Predictions</h2>
+            <span className="text-sm text-gray-500">
               Total: {predictions.length} predictions
             </span>
           </div>
 
           {predictions.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-400 text-lg">No predictions found. Generate one to get started!</p>
+              <p className="text-gray-500 text-lg">No predictions found. Generate one to get started!</p>
             </div>
           ) : (
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {predictions.map((prediction) => (
-                <div key={prediction.id} className="border border-gray-700 rounded-lg p-4 bg-gray-800">
+                <div key={prediction.id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg text-white">
+                        <h3 className="font-semibold text-lg">
                           {prediction.crops?.name || 'Unknown Crop'}
                         </h3>
-                        <span className="text-sm text-gray-400">
+                        <span className="text-sm text-gray-500">
                           in {prediction.regions?.name || 'Unknown Region'}
                         </span>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
-                          <span className="font-medium text-gray-300">Yield:</span>
-                          <span className="text-green-400 ml-1">
+                          <span className="font-medium">Yield:</span>
+                          <span className="text-green-600 ml-1">
                             {prediction.yield?.toFixed(2)} units
                           </span>
                         </div>
                         <div>
-                          <span className="font-medium text-gray-300">Risk Score:</span>
+                          <span className="font-medium">Risk Score:</span>
                           <span className={`ml-1 ${getRiskColor(prediction.risk_score)}`}>
                             {(prediction.risk_score * 100).toFixed(1)}%
                           </span>
                         </div>
                         <div>
-                          <span className="font-medium text-gray-300">Created:</span>
-                          <span className="text-gray-400 ml-1">
+                          <span className="font-medium">Created:</span>
+                          <span className="text-gray-600 ml-1">
                             {new Date(prediction.created_at).toLocaleDateString()}
                           </span>
                         </div>
                         <div>
-                          <span className="font-medium text-gray-300">User:</span>
-                          <span className="text-gray-400 ml-1">
+                          <span className="font-medium">User:</span>
+                          <span className="text-gray-600 ml-1">
                             {prediction.user_id ? 'Yes' : 'No'}
                           </span>
                         </div>
@@ -273,11 +301,11 @@ export default function PredictionsPage() {
 
                       {prediction.features && (
                         <details className="mt-3">
-                          <summary className="cursor-pointer text-sm text-blue-400 hover:text-blue-300">
+                          <summary className="cursor-pointer text-sm text-blue-600 hover:text-blue-800">
                             View Features
                           </summary>
-                          <div className="mt-2 p-3 bg-gray-700 rounded text-xs">
-                            <pre className="whitespace-pre-wrap text-gray-200">
+                          <div className="mt-2 p-3 bg-gray-50 rounded text-xs">
+                            <pre className="whitespace-pre-wrap">
                               {JSON.stringify(prediction.features, null, 2)}
                             </pre>
                           </div>
@@ -293,27 +321,27 @@ export default function PredictionsPage() {
 
         {/* Statistics */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-blue-400">{predictions.length}</p>
-            <p className="text-sm text-gray-400">Total Predictions</p>
+          <div className="bg-gray-900 rounded-lg shadow-md p-6 text-center">
+            <p className="text-2xl font-bold text-blue-600">{predictions.length}</p>
+            <p className="text-sm text-gray-600">Total Predictions</p>
           </div>
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-green-400">
+          <div className="bg-gray-900 rounded-lg shadow-md p-6 text-center">
+            <p className="text-2xl font-bold text-green-600">
               {predictions.length > 0 ? (predictions.reduce((sum, p) => sum + p.yield, 0) / predictions.length).toFixed(1) : 0}
             </p>
-            <p className="text-sm text-gray-400">Avg Yield</p>
+            <p className="text-sm text-gray-600">Avg Yield</p>
           </div>
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-red-400">
+          <div className="bg-gray-900 rounded-lg shadow-md p-6 text-center">
+            <p className="text-2xl font-bold text-red-600">
               {predictions.length > 0 ? (predictions.filter(p => p.risk_score > 0.5).length / predictions.length * 100).toFixed(1) : 0}%
             </p>
-            <p className="text-sm text-gray-400">High Risk %</p>
+            <p className="text-sm text-gray-600">High Risk %</p>
           </div>
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-purple-400">
+          <div className="bg-gray-900 rounded-lg shadow-md p-6 text-center">
+            <p className="text-2xl font-bold text-purple-600">
               {new Set(predictions.map(p => p.crops?.name).filter(Boolean)).size}
             </p>
-            <p className="text-sm text-gray-400">Unique Crops</p>
+            <p className="text-sm text-gray-600">Unique Crops</p>
           </div>
         </div>
       </div>
