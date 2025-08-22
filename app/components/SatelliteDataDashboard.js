@@ -30,6 +30,24 @@ export const SatelliteDataDashboard = ({ region }) => {
       }
       
       const data = await response.json()
+      
+      // Store satellite data in database for historical tracking
+      try {
+        await fetch('/api/satellite/store', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            regionId: region.id,
+            dataType: selectedDataType,
+            satelliteData: data.data,
+            timestamp: new Date().toISOString()
+          })
+        })
+      } catch (dbError) {
+        console.warn('Failed to store satellite data in database:', dbError)
+        // Continue with display even if storage fails
+      }
+      
       setSatelliteData(data.data)
       setError(null)
     } catch (err) {

@@ -16,13 +16,35 @@ export async function GET(request) {
       )
     }
 
-    // Get region data from your database
-    // For now, we'll use mock region data
-    const region = {
-      id: regionId,
-      name: 'Sample Region',
-      lat: 28.6139, // Delhi coordinates
-      lon: 77.2090
+    // Get region data from database
+    let region
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: regionData, error: regionError } = await supabase
+        .from('regions')
+        .select('*')
+        .eq('id', regionId)
+        .single()
+      
+      if (regionError || !regionData) {
+        return NextResponse.json(
+          { error: 'Region not found in database' },
+          { status: 404 }
+        )
+      }
+      
+      region = regionData
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      return NextResponse.json(
+        { error: 'Failed to fetch region data from database' },
+        { status: 500 }
+      )
     }
 
     let satelliteData

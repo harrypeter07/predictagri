@@ -76,6 +76,30 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
       }
 
       const result = await response.json()
+      
+      // Store image analysis results in database
+      try {
+        await fetch('/api/image-analysis/store', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            regionId: selectedRegion || null,
+            cropId: selectedCrop || null,
+            analysisType: analysisType,
+            analysisResult: result.data,
+            imageMetadata: {
+              fileName: selectedImage?.name,
+              fileSize: selectedImage?.size,
+              fileType: selectedImage?.type
+            },
+            timestamp: new Date().toISOString()
+          })
+        })
+      } catch (dbError) {
+        console.warn('Failed to store image analysis results in database:', dbError)
+        // Continue with display even if storage fails
+      }
+      
       setAnalysisResult(result.data)
     } catch (err) {
       setError(err.message)

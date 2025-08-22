@@ -19,6 +19,25 @@ export const RealWeatherWidget = ({ region }) => {
     try {
       setLoading(true)
       const data = await weatherService.getCurrentWeather(region.lat, region.lon)
+      
+      // Store weather data in database for historical tracking
+      try {
+        await fetch('/api/weather/store', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            regionId: region.id,
+            lat: region.lat,
+            lon: region.lon,
+            weatherData: data,
+            timestamp: new Date().toISOString()
+          })
+        })
+      } catch (dbError) {
+        console.warn('Failed to store weather data in database:', dbError)
+        // Continue with display even if storage fails
+      }
+      
       setWeatherData(data)
       setLastUpdated(new Date())
       setError(null)
