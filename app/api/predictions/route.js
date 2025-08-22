@@ -53,30 +53,47 @@ export async function POST(request) {
       )
     }
 
-    // Use ONNX model for prediction
+    // Use ONNX model for prediction via Render backend
     let yield_prediction, risk_score
     
     try {
-      // Import ONNX client dynamically (server-side)
-      const { runPrediction, mapFeaturesToOnnxSchema } = await import('../../../lib/onnxClient.js')
+      // Backend URL - replace with your actual Render URL
+      const BACKEND_URL = process.env.BACKEND_URL || 'https://your-render-backend-url.onrender.com';
       
       // Map features to ONNX schema format
-      const onnxFeatures = mapFeaturesToOnnxSchema(
-        features, 
-        cropData.name, 
-        cropData.season, 
-        regionData.name
-      )
+      const onnxFeatures = {
+        numeric: {
+          soil_ph: features.ph || 6.5
+        },
+        categorical: {
+          crop_name: cropData.name,
+          season: cropData.season,
+          region: regionData.name
+        }
+      };
       
-      // Run ONNX prediction
-      yield_prediction = await runPrediction(onnxFeatures.numeric, onnxFeatures.categorical)
+      // Run ONNX prediction via backend
+      const predictionResponse = await fetch(`${BACKEND_URL}/predict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(onnxFeatures),
+      });
+
+      if (!predictionResponse.ok) {
+        throw new Error(`Backend prediction failed: ${predictionResponse.statusText}`);
+      }
+
+      const predictionData = await predictionResponse.json();
+      yield_prediction = predictionData.prediction;
       
       // Calculate risk score based on prediction and features
       risk_score = calculateRiskScore(features, yield_prediction)
       
-      console.log('ONNX prediction successful:', { yield_prediction, risk_score })
+      console.log('Backend ONNX prediction successful:', { yield_prediction, risk_score })
     } catch (onnxError) {
-      console.warn('ONNX prediction failed, falling back to ML-based calculation:', onnxError)
+      console.warn('Backend ONNX prediction failed, falling back to ML-based calculation:', onnxError)
       
       // Fallback to ML-based prediction using features
       yield_prediction = calculateMLPrediction(features, cropData, regionData)

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadSchema, runPrediction, mapFeaturesToOnnxSchema } from "../../lib/onnxClient.js";
+import { loadSchema, runPrediction, mapFeaturesToOnnxSchema, checkBackendHealth } from "../../lib/onnxClient.js";
 
 export default function OnnxTestPage() {
   const [schema, setSchema] = useState(null);
@@ -9,8 +9,17 @@ export default function OnnxTestPage() {
   const [pred, setPred] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [backendStatus, setBackendStatus] = useState('checking');
 
   useEffect(() => {
+    // Check backend health first
+    checkBackendHealth().then((isHealthy) => {
+      setBackendStatus(isHealthy ? 'healthy' : 'unhealthy');
+    }).catch(() => {
+      setBackendStatus('unhealthy');
+    });
+
+    // Load schema
     loadSchema().then(setSchema).catch(console.error);
   }, []);
 
@@ -70,6 +79,24 @@ export default function OnnxTestPage() {
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">🌾 PredictAgri – ONNX Model Test</h1>
           <p className="text-lg text-gray-300">Test the machine learning model for crop yield prediction</p>
+          
+          {/* Backend Status Indicator */}
+          <div className="mt-4 flex justify-center">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              backendStatus === 'healthy' 
+                ? 'bg-green-900 text-green-200 border border-green-700' 
+                : backendStatus === 'unhealthy' 
+                ? 'bg-red-900 text-red-200 border border-red-700'
+                : 'bg-yellow-900 text-yellow-200 border border-yellow-700'
+            }`}>
+              <span className={`w-2 h-2 rounded-full mr-2 ${
+                backendStatus === 'healthy' ? 'bg-green-400' 
+                : backendStatus === 'unhealthy' ? 'bg-red-400' 
+                : 'bg-yellow-400'
+              }`}></span>
+              Backend: {backendStatus === 'healthy' ? 'Connected' : backendStatus === 'unhealthy' ? 'Disconnected' : 'Checking...'}
+            </div>
+          </div>
         </header>
 
         <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 mb-8">
@@ -135,23 +162,31 @@ export default function OnnxTestPage() {
             ))}
           </section>
 
-          <div className="flex gap-4">
-            <button
-              onClick={onPredict}
-              disabled={loading}
-              className="px-6 py-3 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Running Prediction...' : 'Run Prediction'}
-            </button>
-            
-            <button
-              onClick={onTestWithRealData}
-              disabled={loading}
-              className="px-6 py-3 rounded bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Test with Sample Data
-            </button>
-          </div>
+                         <div className="flex gap-4">
+                 <button
+                   onClick={onPredict}
+                   disabled={loading || backendStatus !== 'healthy'}
+                   className="px-6 py-3 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                 >
+                   {loading ? 'Running Prediction...' : 'Run Prediction'}
+                 </button>
+                 
+                 <button
+                   onClick={onTestWithRealData}
+                   disabled={loading || backendStatus !== 'healthy'}
+                   className="px-6 py-3 rounded bg-green-600 hover:bg-green-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                 >
+                   Test with Sample Data
+                 </button>
+               </div>
+               
+               {backendStatus !== 'healthy' && (
+                 <div className="mt-4 p-3 bg-red-900 border border-red-700 rounded-lg">
+                   <p className="text-red-200 text-sm">
+                     ⚠️ Backend is not available. Please ensure the Render backend is running and accessible.
+                   </p>
+                 </div>
+               )}
         </div>
 
         {error && (
@@ -182,44 +217,56 @@ export default function OnnxTestPage() {
                 </div>
               </div>
               
-              <div>
-                <h3 className="text-lg font-medium text-green-400 mb-2">Model Information</h3>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div className="flex justify-between">
-                    <span>Model Type:</span>
-                    <span>ONNX Runtime</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Execution:</span>
-                    <span>Client-side WASM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Status:</span>
-                    <span className="text-green-400">✓ Success</span>
-                  </div>
-                </div>
-              </div>
+                                 <div>
+                     <h3 className="text-lg font-medium text-green-400 mb-2">Model Information</h3>
+                     <div className="space-y-2 text-sm text-gray-300">
+                       <div className="flex justify-between">
+                         <span>Model Type:</span>
+                         <span>ONNX Runtime</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span>Execution:</span>
+                         <span>Backend Server (Render)</span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span>Backend Status:</span>
+                         <span className={backendStatus === 'healthy' ? 'text-green-400' : 'text-red-400'}>
+                           {backendStatus === 'healthy' ? '✓ Connected' : backendStatus === 'unhealthy' ? '✗ Disconnected' : '⏳ Checking...'}
+                         </span>
+                       </div>
+                       <div className="flex justify-between">
+                         <span>Prediction Status:</span>
+                         <span className="text-green-400">✓ Success</span>
+                       </div>
+                     </div>
+                   </div>
             </div>
           </div>
         )}
 
-        <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
-          <h2 className="text-2xl font-semibold mb-4 text-white">How It Works</h2>
-          <div className="space-y-4 text-gray-300">
-            <p>
-              This page demonstrates the ONNX model integration in PredictAgri. The model takes agricultural features as input and predicts crop yield.
-            </p>
-            <ul className="list-disc list-inside space-y-2 ml-4">
-              <li><strong>Numeric Features:</strong> Soil pH and other continuous values</li>
-              <li><strong>Categorical Features:</strong> Crop name, season, and region</li>
-              <li><strong>Model:</strong> Pre-trained ONNX model running in the browser</li>
-              <li><strong>Output:</strong> Predicted yield in tons per hectare</li>
-            </ul>
-            <p className="text-blue-400">
-              The model runs entirely in your browser using WebAssembly, making it fast and privacy-friendly!
-            </p>
-          </div>
-        </div>
+                     <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
+               <h2 className="text-2xl font-semibold mb-4 text-white">How It Works</h2>
+               <div className="space-y-4 text-gray-300">
+                 <p>
+                   This page demonstrates the ONNX model integration in PredictAgri. The model takes agricultural features as input and predicts crop yield.
+                 </p>
+                 <ul className="list-disc list-inside space-y-2 ml-4">
+                   <li><strong>Numeric Features:</strong> Soil pH and other continuous values</li>
+                   <li><strong>Categorical Features:</strong> Crop name, season, and region</li>
+                   <li><strong>Model:</strong> Pre-trained ONNX model running on Render backend server</li>
+                   <li><strong>Output:</strong> Predicted yield in tons per hectare</li>
+                 </ul>
+                 <p className="text-blue-400">
+                   The model runs on a dedicated backend server, providing better performance and scalability!
+                 </p>
+                 <div className="mt-4 p-3 bg-blue-900 border border-blue-700 rounded-lg">
+                   <h3 className="text-blue-300 font-medium mb-2">Architecture</h3>
+                   <p className="text-blue-200 text-sm">
+                     Frontend (Next.js) → HTTP Request → Backend (Render) → ONNX Model → Prediction Response
+                   </p>
+                 </div>
+               </div>
+             </div>
       </div>
     </div>
   );
