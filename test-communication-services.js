@@ -292,6 +292,108 @@ async function testEmergencyAlert() {
   });
 }
 
+// Email service tests
+async function testEmailService() {
+  const url = `${CONFIG.baseUrl}/api/email?action=test`;
+  
+  return makeRequest(url, {
+    method: 'GET'
+  });
+}
+
+async function testAgriculturalEmail() {
+  const url = `${CONFIG.baseUrl}/api/email`;
+  const body = JSON.stringify({
+    email: CONFIG.testEmail,
+    type: 'agricultural_alert',
+    data: {
+      type: 'drought',
+      severity: 'high',
+      region: 'Maharashtra',
+      crop: 'Cotton',
+      recommendation: 'Immediate irrigation required. Monitor soil moisture levels closely.'
+    },
+    language: 'en'
+  });
+
+  return makeRequest(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body
+  });
+}
+
+async function testWeatherEmail() {
+  const url = `${CONFIG.baseUrl}/api/email`;
+  const body = JSON.stringify({
+    email: CONFIG.testEmail,
+    type: 'weather_forecast',
+    data: {
+      temperature: 32,
+      humidity: 75,
+      precipitation: 25,
+      region: 'Nagpur',
+      forecast: 'Moderate rainfall expected in the next 3 days. Good conditions for rice cultivation.'
+    },
+    language: 'en'
+  });
+
+  return makeRequest(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body
+  });
+}
+
+async function testCropInsightsEmail() {
+  const url = `${CONFIG.baseUrl}/api/email`;
+  const body = JSON.stringify({
+    email: CONFIG.testEmail,
+    type: 'crop_insights',
+    data: {
+      soilHealth: 'Excellent soil conditions with optimal pH and nutrients.',
+      cropSuitability: 'High suitability for wheat and cotton cultivation.',
+      recommendations: [
+        'Consider planting wheat in the northern fields',
+        'Cotton cultivation recommended for southern fields',
+        'Regular soil testing advised'
+      ]
+    },
+    language: 'en'
+  });
+
+  return makeRequest(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body
+  });
+}
+
+async function testYieldPredictionEmail() {
+  const url = `${CONFIG.baseUrl}/api/email`;
+  const body = JSON.stringify({
+    email: CONFIG.testEmail,
+    type: 'yield_prediction',
+    data: {
+      crop: 'Wheat',
+      predictedYield: '4.5 tons per hectare',
+      confidence: 85,
+      factors: [
+        'Favorable weather conditions',
+        'Optimal soil moisture',
+        'Good fertilizer application'
+      ]
+    },
+    language: 'en'
+  });
+
+  return makeRequest(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body
+  });
+}
+
 // Service status check
 async function checkTwilioConfiguration() {
   log('\n🔧 Checking Twilio Configuration...', 'info');
@@ -438,6 +540,26 @@ async function runCommunicationTests() {
   console.log('\n🔍 Testing: Emergency Alert Service');
   const emergencyResult = await testWithRetry('Emergency Alert Service', testEmergencyAlert);
   
+  // Test 8: Email Service Status
+  console.log('\n🔍 Testing: Email Service Status');
+  const emailStatusResult = await testWithRetry('Email Service Status', testEmailService);
+  
+  // Test 9: Agricultural Email Alert
+  console.log('\n🔍 Testing: Agricultural Email Alert');
+  const emailAlertResult = await testWithRetry('Agricultural Email Alert', testAgriculturalEmail);
+  
+  // Test 10: Weather Forecast Email
+  console.log('\n🔍 Testing: Weather Forecast Email');
+  const weatherEmailResult = await testWithRetry('Weather Forecast Email', testWeatherEmail);
+  
+  // Test 11: Crop Insights Email
+  console.log('\n🔍 Testing: Crop Insights Email');
+  const insightsEmailResult = await testWithRetry('Crop Insights Email', testCropInsightsEmail);
+  
+  // Test 12: Yield Prediction Email
+  console.log('\n🔍 Testing: Yield Prediction Email');
+  const yieldEmailResult = await testWithRetry('Yield Prediction Email', testYieldPredictionEmail);
+  
   // Summary
   console.log('\n📊 Communication Services Test Summary Report');
   console.log('=' .repeat(60));
@@ -463,6 +585,17 @@ async function runCommunicationTests() {
   } else {
     console.log('   ❌ Twilio SMS/Voice: Not configured');
     console.log('      Add Twilio credentials to .env.local');
+  }
+  
+  // Check email service status from test results
+  const emailConfigured = emailStatusResult && emailStatusResult.data && 
+                          emailStatusResult.data.test && emailStatusResult.data.test.configured;
+  
+  if (emailConfigured) {
+    console.log('   ✅ Email Service: Configured');
+  } else {
+    console.log('   ❌ Email Service: Not configured (using fallback mode)');
+    console.log('      Add email credentials to .env.local for real emails');
   }
   
   console.log('\n📞 Communication Services Test Complete!');
