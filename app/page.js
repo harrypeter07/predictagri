@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react'
 import Navigation from './components/Navigation'
 import Link from 'next/link'
+import { 
+  YieldTrendChart, 
+  RegionalPerformanceChart, 
+  CropDistributionChart, 
+  ProductivityZoneMap, 
+  WeatherAlertSystem 
+} from './components/Charts'
 
 export default function Home() {
   const [predictions, setPredictions] = useState([])
@@ -96,10 +103,10 @@ export default function Home() {
       <Navigation />
       
       <div className="py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <header className="text-center mb-8">
             <h1 className="text-4xl font-bold text-green-400 mb-2">🌱 PredictAgri Dashboard</h1>
-            <p className="text-lg text-gray-300">Agriculture Crop Yield Prediction System</p>
+            <p className="text-lg text-gray-300">AI/ML Solution for Crop Yield Prediction with Advanced Analytics</p>
           </header>
 
           {/* Quick Actions */}
@@ -145,6 +152,27 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Advanced Analytics Dashboard */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-6 text-center">📊 Advanced Analytics Dashboard</h2>
+            
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <YieldTrendChart data={predictions} />
+              <RegionalPerformanceChart regions={regions} predictions={predictions} />
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <CropDistributionChart crops={crops} predictions={predictions} />
+              <ProductivityZoneMap regions={regions} predictions={predictions} />
+            </div>
+          </div>
+
+          {/* Weather Alert System */}
+          <div className="mb-8">
+            <WeatherAlertSystem predictions={predictions} />
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Recent Predictions */}
@@ -209,6 +237,10 @@ export default function Home() {
                   <span className="font-medium text-orange-200">Database Status</span>
                   <span className="text-green-400 font-semibold">✅ Connected</span>
                 </div>
+                <div className="flex justify-between items-center p-3 bg-indigo-900 rounded border border-indigo-700">
+                  <span className="font-medium text-indigo-200">ML Model Status</span>
+                  <span className="text-yellow-400 font-semibold">🔄 Ready for Integration</span>
+                </div>
               </div>
             </div>
           </div>
@@ -235,6 +267,37 @@ export default function Home() {
                 <Link href="/predictions" className="block text-blue-400 hover:text-blue-300">
                   → Go to Predictions Page
                 </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Features Overview */}
+          <div className="mt-8 bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
+            <h2 className="text-2xl font-semibold mb-4 text-white">🎯 AgriPredict Features Implemented</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="font-semibold text-green-400 mb-2">✅ Automated Pipeline</h3>
+                <p className="text-gray-300 text-sm">Soil quality, weather, and satellite data import system</p>
+              </div>
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="font-semibold text-blue-400 mb-2">✅ ML Model Ready</h3>
+                <p className="text-gray-300 text-sm">Prediction system with region-wise crop analysis</p>
+              </div>
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="font-semibold text-purple-400 mb-2">✅ Farmer Dashboard</h3>
+                <p className="text-gray-300 text-sm">Advanced visualizations with line charts and heatmaps</p>
+              </div>
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="font-semibold text-yellow-400 mb-2">✅ Warning System</h3>
+                <p className="text-gray-300 text-sm">Weather-driven alerts for pests, drought, and floods</p>
+              </div>
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="font-semibold text-indigo-400 mb-2">✅ Demo Flow</h3>
+                <p className="text-gray-300 text-sm">Complete prediction workflow from input to output</p>
+              </div>
+              <div className="p-4 bg-gray-800 rounded-lg">
+                <h3 className="font-semibold text-pink-400 mb-2">✅ Productivity Zones</h3>
+                <p className="text-gray-300 text-sm">Geographic analysis with productivity scoring</p>
               </div>
             </div>
           </div>
