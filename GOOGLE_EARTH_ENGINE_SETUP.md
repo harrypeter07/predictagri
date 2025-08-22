@@ -233,4 +233,4 @@ If you encounter issues:
 
 ---
 
-**Note**: This integration automatically falls back to mock data when Google Earth Engine is unavailable, ensuring your application continues to function for demonstration purposes.
+**Note**: This integration automatically falls back to fallback data when Google Earth Engine is unavailable, ensuring your application continues to function for demonstration purposes.
