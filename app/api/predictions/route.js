@@ -93,7 +93,7 @@ export async function POST(request) {
       
       console.log('Backend ONNX prediction successful:', { yield_prediction, risk_score })
     } catch (onnxError) {
-      console.warn('Backend ONNX prediction failed, falling back to ML-based calculation:', onnxError)
+      console.log('ONNX backend not available, using fallback ML prediction. Error:', onnxError.message)
       
       // Fallback to ML-based prediction using features
       yield_prediction = calculateMLPrediction(features, cropData, regionData)
