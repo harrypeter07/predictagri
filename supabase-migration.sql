@@ -85,11 +85,56 @@ CREATE INDEX idx_predictions_created_at ON predictions(created_at);
 CREATE INDEX idx_alerts_prediction_id ON alerts(prediction_id);
 CREATE INDEX idx_regions_location ON regions(lat, lon);
 
+-- Indexes for new tables
+CREATE INDEX idx_weather_data_region_id ON weather_data(region_id);
+CREATE INDEX idx_weather_data_timestamp ON weather_data(timestamp);
+CREATE INDEX idx_weather_data_location ON weather_data(lat, lon);
+CREATE INDEX idx_satellite_data_region_id ON satellite_data(region_id);
+CREATE INDEX idx_satellite_data_type ON satellite_data(data_type);
+CREATE INDEX idx_satellite_data_timestamp ON satellite_data(timestamp);
+CREATE INDEX idx_image_analysis_region_id ON image_analysis_results(region_id);
+CREATE INDEX idx_image_analysis_crop_id ON image_analysis_results(crop_id);
+CREATE INDEX idx_image_analysis_type ON image_analysis_results(analysis_type);
+CREATE INDEX idx_image_analysis_timestamp ON image_analysis_results(timestamp);
+
+-- 5. Weather Data table for historical tracking
+CREATE TABLE weather_data (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    region_id UUID REFERENCES regions(id),
+    lat FLOAT8 NOT NULL,
+    lon FLOAT8 NOT NULL,
+    weather_data JSONB NOT NULL, -- store complete weather response
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 6. Satellite Data table for historical tracking
+CREATE TABLE satellite_data (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    region_id UUID REFERENCES regions(id),
+    data_type TEXT NOT NULL, -- ndvi, temperature, soil-moisture, etc.
+    satellite_data JSONB NOT NULL, -- store complete satellite data
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7. Image Analysis Results table
+CREATE TABLE image_analysis_results (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    region_id UUID REFERENCES regions(id),
+    crop_id UUID REFERENCES crops(id),
+    analysis_type TEXT NOT NULL, -- comprehensive, crop-health, disease-detection, etc.
+    analysis_result JSONB NOT NULL, -- store complete analysis results
+    image_metadata JSONB, -- store file info, size, type
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Add Row Level Security (RLS) policies for better security
 ALTER TABLE regions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crops ENABLE ROW LEVEL SECURITY;
 ALTER TABLE predictions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE weather_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE satellite_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE image_analysis_results ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to regions and crops (for dropdowns)
 CREATE POLICY "Allow public read access to regions" ON regions FOR SELECT USING (true);
@@ -98,6 +143,14 @@ CREATE POLICY "Allow public read access to crops" ON crops FOR SELECT USING (tru
 -- Allow public access to predictions (for the app to work without auth)
 CREATE POLICY "Allow public insert to predictions" ON predictions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public read access to predictions" ON predictions FOR SELECT USING (true);
+
+-- Allow public access to weather, satellite, and image analysis data
+CREATE POLICY "Allow public insert to weather_data" ON weather_data FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public read access to weather_data" ON weather_data FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to satellite_data" ON satellite_data FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public read access to satellite_data" ON satellite_data FOR SELECT USING (true);
+CREATE POLICY "Allow public insert to image_analysis_results" ON image_analysis_results FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public read access to image_analysis_results" ON image_analysis_results FOR SELECT USING (true);
 
 -- Allow public access to alerts (for the app to work without auth)
 CREATE POLICY "Allow public insert to alerts" ON alerts FOR INSERT WITH CHECK (true);

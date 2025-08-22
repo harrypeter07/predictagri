@@ -116,115 +116,218 @@ export async function GET(request) {
   }
 }
 
-// POST: Get satellite data for multiple regions
+// POST: Store satellite data in database
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { regions, dataType = 'comprehensive', date = new Date().toISOString() } = body
-
-    if (!regions || !Array.isArray(regions) || regions.length === 0) {
+    const { regionId, dataType, satelliteData, timestamp } = body
+    
+    // Store satellite data in database for historical tracking
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+    
+    const { error: insertError } = await supabase
+      .from('satellite_data')
+      .insert({
+        region_id: regionId,
+        data_type: dataType,
+        satellite_data: satelliteData,
+        timestamp: timestamp || new Date().toISOString()
+      })
+    
+    if (insertError) {
+      console.error('Failed to store satellite data:', insertError)
       return NextResponse.json(
-        { error: 'Regions array is required' },
-        { status: 400 }
+        { success: false, error: 'Failed to store satellite data' },
+        { status: 500 }
       )
     }
-
-    if (regions.length > 10) {
-      return NextResponse.json(
-        { error: 'Maximum 10 regions allowed per request' },
-        { status: 400 }
-      )
-    }
-
-    const targetDate = new Date(date)
-    const results = []
-
-    // Process regions sequentially to avoid overwhelming the API
-    for (const region of regions) {
-      try {
-        let satelliteData
-
-        switch (dataType) {
-          case 'ndvi':
-            satelliteData = await googleEarthEngineService.getNDVIData(region, targetDate)
-            break
-          case 'temperature':
-            satelliteData = await googleEarthEngineService.getLandSurfaceTemperature(region, targetDate)
-            break
-          case 'soil-moisture':
-            satelliteData = await googleEarthEngineService.getSoilMoisture(region, targetDate)
-            break
-          case 'vegetation-health':
-            satelliteData = await googleEarthEngineService.getVegetationHealthIndex(region, targetDate)
-            break
-          case 'comprehensive':
-          default:
-            satelliteData = await googleEarthEngineService.getComprehensiveSatelliteData(region, targetDate)
-            break
-        }
-
-        results.push({
-          regionId: region.id,
-          regionName: region.name,
-          success: true,
-          data: satelliteData
-        })
-
-      } catch (error) {
-        console.error(`Failed to fetch data for region ${region.id}:`, error)
-        results.push({
-          regionId: region.id,
-          regionName: region.name,
-          success: false,
-          error: error.message,
-          fallbackData: await getFallbackData(region, dataType, targetDate)
-        })
-      }
-    }
-
-    const serviceStatus = googleEarthEngineService.getServiceStatus()
-
-    return NextResponse.json({
-      success: true,
-      results,
-      serviceStatus,
-      timestamp: new Date().toISOString()
-    })
-
+    
+    return NextResponse.json({ success: true, message: 'Satellite data stored successfully' })
+    
   } catch (error) {
-    console.error('Bulk satellite data API error:', error)
+    console.error('Satellite data storage error:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch bulk satellite data',
-        message: error.message
-      },
+      { success: false, error: 'Failed to store satellite data' },
       { status: 500 }
     )
   }
 }
 
-// Helper function to get fallback data
-async function getFallbackData(region, dataType, date) {
+// GET: Fetch historical satellite data
+export async function GET(request) {
+  const { searchParams } = new URL(request.url)
+  const action = searchParams.get('action')
+  
+  if (action === 'history') {
+    try {
+      const regionId = searchParams.get('regionId')
+      const dataType = searchParams.get('dataType')
+      const limit = parseInt(searchParams.get('limit') || '30')
+      
+      if (!regionId) {
+        return NextResponse.json(
+          { error: 'Region ID is required' },
+          { status: 400 }
+        )
+      }
+      
+      // Fetch historical data from database
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      let query = supabase
+        .from('satellite_data')
+        .select('*')
+        .eq('region_id', regionId)
+        .order('timestamp', { ascending: false })
+        .limit(limit)
+      
+      if (dataType) {
+        query = query.eq('data_type', dataType)
+      }
+      
+      const { data: historicalData, error: dbError } = await query
+      
+      if (dbError) {
+        console.error('Failed to fetch historical data:', dbError)
+        return NextResponse.json(
+          { error: 'Failed to fetch historical data' },
+          { status: 500 }
+        )
+      }
+      
+      return NextResponse.json({
+        success: true,
+        data: historicalData,
+        timestamp: new Date().toISOString()
+      })
+      
+    } catch (error) {
+      console.error('Historical data fetch error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch historical data' },
+        { status: 500 }
+      )
+    }
+  }
+  
+  // Default behavior - get current satellite data
   try {
+    const { searchParams } = new URL(request.url)
+    const regionId = searchParams.get('regionId')
+    const dataType = searchParams.get('dataType') || 'comprehensive'
+    const date = searchParams.get('date') || new Date().toISOString()
+
+    if (!regionId) {
+      return NextResponse.json(
+        { error: 'Region ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Get region data from database
+    let region
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: regionData, error: regionError } = await supabase
+        .from('regions')
+        .select('*')
+        .eq('id', regionId)
+        .single()
+      
+      if (regionError || !regionData) {
+        return NextResponse.json(
+          { error: 'Region not found in database' },
+          { status: 404 }
+        )
+      }
+      
+      region = regionData
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      return NextResponse.json(
+        { error: 'Failed to fetch region data from database' },
+        { status: 500 }
+      )
+    }
+
+    let satelliteData
+    const targetDate = new Date(date)
+
     switch (dataType) {
       case 'ndvi':
-        return await googleEarthEngineService.getMockNDVIData(region, date)
+        satelliteData = await googleEarthEngineService.getNDVIData(region, targetDate)
+        break
       case 'temperature':
-        return await googleEarthEngineService.getMockTemperatureData(region, date)
+        satelliteData = await googleEarthEngineService.getLandSurfaceTemperature(region, targetDate)
+        break
       case 'soil-moisture':
-        return await googleEarthEngineService.getMockSoilMoistureData(region, date)
+        satelliteData = await googleEarthEngineService.getSoilMoisture(region, targetDate)
+        break
       case 'vegetation-health':
-        return await googleEarthEngineService.getMockVegetationHealthData(region, date)
+        satelliteData = await googleEarthEngineService.getVegetationHealthIndex(region, targetDate)
+        break
       case 'comprehensive':
       default:
-        return await googleEarthEngineService.getMockComprehensiveData(region, date)
+        satelliteData = await googleEarthEngineService.getComprehensiveSatelliteData(region, targetDate)
+        break
     }
+
+    // Get service status for monitoring
+    const serviceStatus = googleEarthEngineService.getServiceStatus()
+
+    return NextResponse.json({
+      success: true,
+      data: satelliteData,
+      serviceStatus,
+      timestamp: new Date().toISOString()
+    })
+
   } catch (error) {
-    console.error('Fallback data generation failed:', error)
-    return {
-      error: 'Fallback data unavailable',
-      timestamp: date.toISOString(),
-      source: 'Error'
+    console.error('Satellite data API error:', error)
+    
+    // Return appropriate error response
+    if (error.message.includes('API call limit exceeded')) {
+      return NextResponse.json(
+        { 
+          error: 'Daily API call limit exceeded',
+          message: 'Please try again tomorrow or upgrade your plan',
+          fallbackAvailable: true
+        },
+        { status: 429 }
+      )
     }
+
+    if (error.message.includes('Too many consecutive errors')) {
+      return NextResponse.json(
+        { 
+          error: 'Service temporarily unavailable',
+          message: 'Switching to fallback mode',
+          fallbackAvailable: true
+        },
+        { status: 503 }
+      )
+    }
+
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch satellite data',
+        message: error.message,
+        fallbackAvailable: true
+      },
+      { status: 500 }
+    )
   }
 }

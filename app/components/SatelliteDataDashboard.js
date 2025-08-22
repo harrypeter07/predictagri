@@ -10,6 +10,7 @@ export const SatelliteDataDashboard = ({ region }) => {
   const [error, setError] = useState(null)
   const [selectedDataType, setSelectedDataType] = useState('comprehensive')
   const [historicalData, setHistoricalData] = useState([])
+  const [showHistorical, setShowHistorical] = useState(false)
 
   useEffect(() => {
     if (region?.id) {
@@ -67,6 +68,20 @@ export const SatelliteDataDashboard = ({ region }) => {
       }
     } catch (err) {
       console.error('Failed to fetch service status:', err)
+    }
+  }
+
+  const fetchHistoricalData = async () => {
+    if (!region?.id) return
+    
+    try {
+      const response = await fetch(`/api/satellite/history?regionId=${region.id}&dataType=${selectedDataType}&limit=30`)
+      if (response.ok) {
+        const data = await response.json()
+        setHistoricalData(data.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch historical data:', err)
     }
   }
 
@@ -134,6 +149,17 @@ export const SatelliteDataDashboard = ({ region }) => {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-white">🛰️ Satellite Data Dashboard</h3>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => {
+              setShowHistorical(!showHistorical)
+              if (!showHistorical) {
+                fetchHistoricalData()
+              }
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+          >
+            {showHistorical ? 'Hide' : 'Show'} Historical Data
+          </button>
           <span className={`text-sm ${getHealthColor(serviceStatus?.health)}`}>
             {getHealthIcon(serviceStatus?.health)} {serviceStatus?.health}
           </span>
@@ -213,6 +239,28 @@ export const SatelliteDataDashboard = ({ region }) => {
             <span className="text-gray-300">Data Source:</span>
             <span className="text-white font-semibold">{satelliteData.source}</span>
           </div>
+
+          {/* Historical Data Display */}
+          {showHistorical && historicalData.length > 0 && (
+            <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
+              <h4 className="text-lg font-semibold text-white mb-3">📈 Historical Trends</h4>
+              <div className="space-y-3">
+                {historicalData.slice(0, 10).map((record, index) => (
+                  <div key={record.id} className="flex justify-between items-center p-2 bg-gray-700 rounded">
+                    <div className="text-sm text-gray-300">
+                      {new Date(record.timestamp).toLocaleDateString()}
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {record.data_type} - {record.satellite_data?.quality || 'Unknown'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 text-xs text-gray-500 text-center">
+                Showing last {Math.min(historicalData.length, 10)} records
+              </div>
+            </div>
+          )}
 
           {/* Main Data Display */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
