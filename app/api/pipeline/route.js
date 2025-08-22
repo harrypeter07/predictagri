@@ -96,9 +96,9 @@ export async function POST(request) {
             pipelineId: result.pipelineId,
             timestamp: result.timestamp,
             dataCollection: {
-              weather: result.weather,
-              environmental: result.environmental,
-              imageAnalysis: result.imageAnalysis
+              weather: result.dataCollection?.weather || result.weather,
+              environmental: result.dataCollection?.environmental || result.environmental,
+              imageAnalysis: result.dataCollection?.imageAnalysis || result.imageAnalysis
             },
             insights: [
               {
@@ -144,8 +144,8 @@ export async function POST(request) {
           // Store results in database for farmer analysis
           storedResult = await storeFarmerAnalysisResults(result, phoneNumber)
           
-          // Send notification to farmer
-          notificationResult = await sendFarmerNotification(result, phoneNumber)
+          // Enhanced pipeline already sends notifications, so use the result from the pipeline
+          notificationResult = result.notification || { success: false, method: 'None' }
         }
       } catch (enhancedError) {
         logger.error('enhanced_pipeline_failed', { error: enhancedError.message })
