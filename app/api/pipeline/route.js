@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Logger } from '../../../lib/logger'
-const AutomatedPipeline = require('../../../lib/automatedPipeline')
-const EnhancedAutomatedPipeline = require('../../../lib/enhancedAutomatedPipeline')
+import { automatedPipeline } from '../../../lib/automatedPipeline.js'
+import { enhancedAutomatedPipeline } from '../../../lib/enhancedAutomatedPipeline.js'
 import { supabase } from '../../../lib/supabaseClient'
 
 export async function POST(request) {

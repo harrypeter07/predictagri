@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { googleEarthEngineService } from '../../../lib/googleEarthEngineService'
-const imageProcessingService = require('../../../lib/imageProcessingService')
+import { imageProcessingService } from '../../../lib/imageProcessingService.js'
 
 // GET: Get comprehensive farmer analysis
 export async function GET(request) {

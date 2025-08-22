@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Logger } from '../../../lib/logger'
-const TwilioService = require('../../../lib/twilioService')
+import { twilioService } from '../../../lib/twilioService.js'
 
 export async function POST(request) {
   const logger = new Logger({ route: '/api/alerts' })

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Logger } from '../../../lib/logger'
-const VoiceAssistant = require('../../../lib/voiceAssistant')
+import { voiceAssistant } from '../../../lib/voiceAssistant.js'
 
 export async function POST(request) {
   const logger = new Logger({ route: '/api/voice' })

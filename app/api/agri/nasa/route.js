@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Logger } from '../../../../lib/logger'
-const NASADataService = require('../../../../lib/nasaDataService')
+import { nasaDataService } from '../../../../lib/nasaDataService.js'
 
 export async function GET(request) {
   const logger = new Logger({ route: '/api/agri/nasa' })
