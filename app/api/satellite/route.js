@@ -68,15 +68,7 @@ export async function GET(request) {
     const dataType = searchParams.get('dataType') || 'comprehensive'
     const date = searchParams.get('date') || new Date().toISOString()
 
-    console.log(`🛰️ [Satellite API] Request received:`, {
-      regionId,
-      dataType,
-      date,
-      timestamp: new Date().toISOString()
-    })
-
     if (!regionId) {
-      console.error(`🛰️ [Satellite API] Missing regionId parameter`)
       return NextResponse.json(
         { error: 'Region ID is required' },
         { status: 400 }
@@ -86,7 +78,6 @@ export async function GET(request) {
     // Get region data from database
     let region
     try {
-      console.log(`🛰️ [Satellite API] Fetching region data from database for ID: ${regionId}`)
       const { createClient } = await import('@supabase/supabase-js')
       const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -100,22 +91,12 @@ export async function GET(request) {
         .single()
       
       if (regionError || !regionData) {
-        console.error(`🛰️ [Satellite API] Region not found in database:`, {
-          regionId,
-          error: regionError,
-          hasData: !!regionData
-        })
         return NextResponse.json(
           { error: 'Region not found in database' },
           { status: 404 }
         )
       }
       
-      console.log(`🛰️ [Satellite API] Region data retrieved successfully:`, {
-        regionName: regionData.name,
-        coordinates: `${regionData.lat}, ${regionData.lon}`,
-        regionId: regionData.id
-      })
       region = regionData
     } catch (dbError) {
       console.error('Database error:', dbError)
@@ -127,40 +108,25 @@ export async function GET(request) {
 
     let satelliteData
     const targetDate = new Date(date)
-    
-    console.log(`🛰️ [Satellite API] Fetching ${dataType} data for region: ${region.name}`)
-    console.log(`🛰️ [Satellite API] Target date: ${targetDate.toISOString()}`)
 
     switch (dataType) {
       case 'ndvi':
-        console.log(`🛰️ [Satellite API] Calling Google Earth Engine for NDVI data...`)
         satelliteData = await googleEarthEngineService.getNDVIData(region, targetDate)
         break
       case 'temperature':
-        console.log(`🛰️ [Satellite API] Calling Google Earth Engine for temperature data...`)
         satelliteData = await googleEarthEngineService.getLandSurfaceTemperature(region, targetDate)
         break
       case 'soil-moisture':
-        console.log(`🛰️ [Satellite API] Calling Google Earth Engine for soil moisture data...`)
         satelliteData = await googleEarthEngineService.getComprehensiveSoilData(region, targetDate)
         break
       case 'vegetation-health':
-        console.log(`🛰️ [Satellite API] Calling Google Earth Engine for vegetation health data...`)
         satelliteData = await googleEarthEngineService.getVegetationHealthIndex(region, targetDate)
         break
       case 'comprehensive':
       default:
-        console.log(`🛰️ [Satellite API] Calling Google Earth Engine for comprehensive satellite data...`)
         satelliteData = await googleEarthEngineService.getComprehensiveSatelliteData(region, targetDate)
         break
     }
-    
-    console.log(`🛰️ [Satellite API] Data retrieved successfully:`, {
-      dataType,
-      hasData: !!satelliteData,
-      dataKeys: satelliteData ? Object.keys(satelliteData) : [],
-      source: satelliteData?.source || 'Unknown'
-    })
 
     // Get service status for monitoring
     const serviceStatus = googleEarthEngineService.getServiceStatus()

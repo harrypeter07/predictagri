@@ -11,10 +11,7 @@ export async function POST(request) {
     const body = await request.json()
     const { region, farmerData, userId, regionId, cropId } = body
     
-    logger.info('pipeline_request_received', { region, farmerData })
-    
     if (!region && !farmerData) {
-      logger.error('missing_region_or_farmer_data')
       return NextResponse.json({ success: false, error: 'Either region or farmerData is required' }, { status: 400 })
     }
     
@@ -22,7 +19,6 @@ export async function POST(request) {
     
     if (farmerData) {
       // Use enhanced automated pipeline for farmer data
-      logger.info('using_enhanced_pipeline', { farmerId: farmerData.farmerId })
       
       const enhancedPipeline = new EnhancedAutomatedPipeline()
       result = await enhancedPipeline.executeFarmerPipeline(farmerData)
@@ -81,18 +77,11 @@ export async function POST(request) {
       }
     } else {
       // Use standard pipeline for region-based analysis
-      logger.info('using_standard_pipeline', { region })
       const pipeline = new AutomatedPipeline()
       result = await pipeline.executePipeline(region)
     }
     
     if (result.success) {
-      logger.info('pipeline_execution_success', { 
-        pipelineId: result.pipelineId,
-        insightsCount: result.insights?.length || 0,
-        predictionsCount: result.predictions?.length || 0,
-        alertsCount: result.alerts?.length || 0
-      })
       
       // Persist prediction summary and alerts if regionId/cropId provided
       try {
