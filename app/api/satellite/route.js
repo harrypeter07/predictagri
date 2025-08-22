@@ -142,7 +142,7 @@ export async function GET(request) {
         break
       case 'soil-moisture':
         console.log(`🛰️ [Satellite API] Calling Google Earth Engine for soil moisture data...`)
-        satelliteData = await googleEarthEngineService.getSoilMoisture(region, targetDate)
+        satelliteData = await googleEarthEngineService.getComprehensiveSoilData(region, targetDate)
         break
       case 'vegetation-health':
         console.log(`🛰️ [Satellite API] Calling Google Earth Engine for vegetation health data...`)
