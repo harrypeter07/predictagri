@@ -94,18 +94,18 @@ export default function CropsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading crops...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-xl text-white">Loading crops...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-black py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Crops Management</h1>
-          <p className="text-lg text-gray-600">Manage agricultural crops and seasons</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Crops Management</h1>
+          <p className="text-lg text-gray-300">Manage agricultural crops and seasons</p>
         </header>
 
         <div className="mb-6 flex gap-4 justify-center">
@@ -125,27 +125,27 @@ export default function CropsPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded">
             {error}
           </div>
         )}
 
         {showAddForm && (
-          <div className="mb-6 bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4">Add New Crop</h2>
+          <div className="mb-6 bg-gray-900 rounded-lg shadow-md p-6 border border-gray-700">
+            <h2 className="text-xl font-semibold mb-4 text-white">Add New Crop</h2>
             <form onSubmit={handleAddCrop} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 type="text"
                 placeholder="Crop Name"
                 value={newCrop.name}
                 onChange={(e) => setNewCrop({...newCrop, name: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
               <select
                 value={newCrop.season}
                 onChange={(e) => setNewCrop({...newCrop, season: e.target.value})}
-                className="border rounded px-3 py-2"
+                className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
                 <option value="">Select Season</option>
@@ -166,14 +166,14 @@ export default function CropsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {crops.map((crop) => (
-            <div key={crop.id} className="bg-white rounded-lg shadow-md p-6">
+            <div key={crop.id} className="bg-gray-900 rounded-lg shadow-md p-6 border border-gray-700">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold">{crop.name}</h3>
+                <h3 className="text-xl font-semibold text-white">{crop.name}</h3>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeasonColor(crop.season)}`}>
                   {crop.season}
                 </span>
               </div>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm text-gray-300">
                 <p><strong>Season:</strong> {crop.season}</p>
                 <p><strong>ID:</strong> {crop.id}</p>
               </div>
@@ -183,13 +183,13 @@ export default function CropsPage() {
 
         {crops.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No crops found. Add some crops to get started!</p>
+            <p className="text-gray-400 text-lg">No crops found. Add some crops to get started!</p>
           </div>
         )}
 
         {/* Season Legend */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Season Legend</h2>
+        <div className="mt-8 bg-gray-900 rounded-lg shadow-md p-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4 text-white">Season Legend</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-2">
               <span className="w-4 h-4 bg-blue-100 rounded"></span>
