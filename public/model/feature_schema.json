@@ -1,0 +1,10 @@
+{
+  "numeric_features": [
+    "soil_ph"
+  ],
+  "categorical_features": [
+    "crop_name",
+    "season",
+    "region"
+  ]
+}
