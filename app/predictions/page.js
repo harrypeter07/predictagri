@@ -30,6 +30,8 @@ export default function PredictionsPage() {
   const [selectedCrop, setSelectedCrop] = useState('')
   const [selectedRegion, setSelectedRegion] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
+  const [aiModelCalls, setAiModelCalls] = useState([])
+  const [pipelineResults, setPipelineResults] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -98,12 +100,21 @@ export default function PredictionsPage() {
             (weatherData.weather?.current?.relative_humidity_2m || 65) / 100 * 0.7
           )),
           nitrogen: 40 + Math.random() * 20,
-          phosphorus: 25 + Math.random() * 15,
-          potassium: 20 + Math.random() * 15,
+          phosphorus: 30 + Math.random() * 15,
+          potassium: 35 + Math.random() * 18,
           ph: 6.0 + Math.random() * 2
-        },
-        timestamp: new Date().toISOString()
+        }
       }
+
+      // Log AI model endpoint call
+      const aiCall = {
+        timestamp: new Date().toISOString(),
+        endpoint: '/api/predictions',
+        method: 'POST',
+        request: requestData,
+        status: 'calling'
+      }
+      setAiModelCalls(prev => [...prev, aiCall])
 
       const response = await fetch('/api/predictions', {
         method: 'POST',
@@ -111,318 +122,184 @@ export default function PredictionsPage() {
         body: JSON.stringify(requestData)
       })
 
-      if (response.ok) {
-        const newPrediction = await response.json()
-        setPredictions([newPrediction, ...predictions])
-        setSelectedCrop('')
-        setSelectedRegion('')
-        setSelectedUser('')
-      } else {
-        setError('Failed to generate prediction')
+      const result = await response.json()
+
+      // Update AI call with response
+      const updatedCall = {
+        ...aiCall,
+        status: response.ok ? 'success' : 'error',
+        response: result,
+        responseTime: Date.now() - new Date(aiCall.timestamp).getTime()
       }
+      setAiModelCalls(prev => prev.map(call => 
+        call.timestamp === aiCall.timestamp ? updatedCall : call
+      ))
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate prediction')
+      }
+
+      // Refresh predictions data
+      await fetchData()
+      
+      // Show success message
+      setError(null)
     } catch (err) {
-      setError('Error generating prediction')
+      setError(err.message)
+      // Update AI call with error
+      setAiModelCalls(prev => prev.map(call => 
+        call.status === 'calling' ? { ...call, status: 'error', error: err.message } : call
+      ))
     } finally {
       setLoading(false)
     }
   }
 
-  const generateMultiplePredictions = async (count = 5) => {
-    setLoading(true)
-    setError(null)
-
+  const runPipelineAnalysis = async () => {
     try {
-      const promises = []
-      for (let i = 0; i < count; i++) {
-        const randomCrop = crops[Math.floor(Math.random() * crops.length)]
-        const randomRegion = regions[Math.floor(Math.random() * regions.length)]
-        if (randomCrop && randomRegion) {
-          // Generate real-time prediction data based on current conditions
-          const requestData = {
-            userId: `user_${Date.now()}_${i}`, // Generate unique user ID
-            cropId: randomCrop.id,
-            regionId: randomRegion.id,
-            features: {
-              temperature: Math.random() * 20 + 15, // 15-35°C
-              humidity: Math.random() * 40 + 40, // 40-80%
-              rainfall: Math.random() * 100, // 0-100mm
-              wind_speed: Math.random() * 20, // 0-20 km/h
-              soil_moisture: Math.random() * 0.4 + 0.3, // 0.3-0.7
-              soil_n: Math.random() * 30 + 20, // 20-50
-              soil_p: Math.random() * 25 + 15, // 15-40
-              soil_k: Math.random() * 20 + 10, // 10-30
-              ph: Math.random() * 2 + 6 // 6-8
-            }
-          }
+      setLoading(true)
+      setError(null)
 
-          promises.push(
-            fetch('/api/predictions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(requestData)
-            })
-          )
+      const requestData = {
+        farmerData: {
+          farmerId: selectedUser || `user-${Date.now()}`,
+          coordinates: { lat: 21.1458, lon: 79.0882 },
+          address: 'Nagpur, Maharashtra',
+          crops: selectedCrop ? [selectedCrop] : ['Wheat', 'Rice', 'Cotton'],
+          farmSize: 5.0,
+          soilType: 'Clay Loam',
+          irrigationType: 'Sprinkler',
+          previousYield: 'Good',
+          pestIssues: [],
+          contactInfo: { phoneNumber: '+919322909257' }
         }
       }
 
-      await Promise.all(promises)
-      fetchData()
+      // Log AI model endpoint call
+      const aiCall = {
+        timestamp: new Date().toISOString(),
+        endpoint: '/api/pipeline',
+        method: 'POST',
+        request: requestData,
+        status: 'calling'
+      }
+      setAiModelCalls(prev => [...prev, aiCall])
+
+      const response = await fetch('/api/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+      })
+
+      const result = await response.json()
+
+      // Update AI call with response
+      const updatedCall = {
+        ...aiCall,
+        status: response.ok ? 'success' : 'error',
+        response: result,
+        responseTime: Date.now() - new Date(aiCall.timestamp).getTime()
+      }
+      setAiModelCalls(prev => prev.map(call => 
+        call.timestamp === aiCall.timestamp ? updatedCall : call
+      ))
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Pipeline analysis failed')
+      }
+
+      setPipelineResults(result)
+      setError(null)
     } catch (err) {
-      setError('Error generating multiple predictions')
+      setError(err.message)
+      // Update AI call with error
+      setAiModelCalls(prev => prev.map(call => 
+        call.status === 'calling' ? { ...call, status: 'error', error: err.message } : call
+      ))
     } finally {
       setLoading(false)
     }
   }
 
-  const getRiskColor = (riskScore) => {
-    if (riskScore > 0.5) return 'text-red-400'
-    if (riskScore > 0.3) return 'text-yellow-400'
-    return 'text-green-400'
+  const clearAiModelCalls = () => {
+    setAiModelCalls([])
   }
 
   if (loading && predictions.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-xl text-white">Loading predictions...</div>
+      <div className="min-h-screen bg-gray-900 text-white p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-4 text-xl">Loading agricultural insights...</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Predictions Management</h1>
-          <p className="text-lg text-gray-300">Generate and manage crop yield predictions</p>
-        </header>
-
-        {/* Add Live Panels Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <WeatherPanel />
-          <AgriPipelinePanel region={regions[0]?.name || 'user-location'} />
-          <NasaPanel />
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Page Header */}
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-white mb-4">🌾 Agricultural Predictions & Analytics</h1>
+          <p className="text-gray-300 text-lg">Comprehensive analysis of crop performance, weather patterns, and farming recommendations</p>
         </div>
 
-        {/* Prediction Generator */}
-        <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-white">Generate New Prediction</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <select
-              value={selectedCrop}
-              onChange={(e) => setSelectedCrop(e.target.value)}
-              className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select Crop</option>
-              {crops.map((crop) => (
-                <option key={crop.id} value={crop.id}>
-                  {crop.name} ({crop.season})
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
-              className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select Region</option>
-              {regions.map((region) => (
-                <option key={region.id} value={region.id}>
-                  {region.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="text"
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              placeholder="Enter User ID (Optional)"
-              className="border border-gray-600 rounded px-3 py-2 bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={generatePrediction}
-              disabled={loading || !selectedCrop || !selectedRegion}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-            >
-              {loading ? 'Generating...' : 'Generate Prediction'}
-            </button>
-            <button
-              onClick={() => generateMultiplePredictions(5)}
-              disabled={loading || crops.length === 0 || regions.length === 0}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-            >
-              Generate 5 Random Predictions
-            </button>
-          </div>
-
-          {error && (
-            <div className="mt-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded">
-              {error}
+        {/* AI Model Endpoint Calls */}
+        {aiModelCalls.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-white">🤖 AI Model Endpoint Calls</h2>
+              <button
+                onClick={clearAiModelCalls}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+              >
+                Clear All
+              </button>
             </div>
-          )}
-        </div>
-
-        {/* Advanced Analytics Dashboard */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-white mb-6 text-center">📊 Advanced Analytics Dashboard</h2>
-          
-          {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <YieldTrendChart data={predictions} />
-            <RegionalPerformanceChart regions={regions} predictions={predictions} />
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <CropDistributionChart crops={crops} predictions={predictions} />
-            <ProductivityZoneMap regions={regions} predictions={predictions} />
-          </div>
-        </div>
-
-        {/* Pipeline Data Analysis Charts */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-white mb-6 text-center">🌱 Pipeline Data Analysis</h2>
-          
-          {/* Soil and Weather Analysis */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <SoilHealthChart pipelineData={predictions} />
-            <WeatherImpactChart pipelineData={predictions} />
-          </div>
-          
-          {/* Crop and Seasonal Analysis */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <CropPerformanceChart pipelineData={predictions} crops={crops} />
-            <SeasonalAnalysisChart pipelineData={predictions} crops={crops} />
-          </div>
-        </div>
-
-        {/* Weather Alert System */}
-        <div className="mb-8">
-          <WeatherAlertSystem predictions={predictions} />
-        </div>
-        
-        {/* Satellite Data Dashboard */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-white mb-6 text-center">🛰️ Satellite Data Analysis</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SatelliteDataDashboard region={regions[0]} />
-            <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
-              <h3 className="text-xl font-semibold text-white mb-4">📡 Satellite Data Benefits</h3>
-              <div className="space-y-3 text-gray-300">
-                <div className="flex items-start space-x-3">
-                  <span className="text-green-400 text-lg">🌱</span>
-                  <div>
-                    <p className="font-medium text-white">NDVI Analysis</p>
-                    <p className="text-sm text-gray-400">Monitor vegetation health and growth patterns</p>
+            <div className="space-y-4">
+              {aiModelCalls.map((call, index) => (
+                <div key={index} className="bg-gray-700 rounded p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`px-3 py-1 rounded text-sm font-medium ${
+                      call.status === 'success' ? 'bg-green-600 text-white' :
+                      call.status === 'error' ? 'bg-red-600 text-white' :
+                      'bg-yellow-600 text-white'
+                    }`}>
+                      {call.status === 'success' ? '✅ Success' :
+                       call.status === 'error' ? '❌ Error' : '⏳ Calling...'}
+                    </span>
+                    <span className="text-gray-400 text-sm">
+                      {new Date(call.timestamp).toLocaleString()}
+                    </span>
                   </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-red-400 text-lg">🌡️</span>
-                  <div>
-                    <p className="font-medium text-white">Land Surface Temperature</p>
-                    <p className="text-sm text-gray-400">Track thermal stress and irrigation needs</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-blue-400 text-lg">💧</span>
-                  <div>
-                    <p className="font-medium text-white">Soil Moisture</p>
-                    <p className="text-sm text-sm text-gray-400">Monitor water content and drought conditions</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <span className="text-purple-400 text-lg">📊</span>
-                  <div>
-                    <p className="font-medium text-white">Real-time Monitoring</p>
-                    <p className="text-sm text-gray-400">Get up-to-date satellite data for informed decisions</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Image Analysis Dashboard */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-white mb-6 text-center">🔍 AI-Powered Image Analysis</h2>
-          <ImageAnalysisDashboard regions={regions} crops={crops} />
-        </div>
-
-        {/* Alerts and Voice Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <AlertsPanel />
-          <VoicePanel />
-        </div>
-
-        {/* Predictions List */}
-        <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-white">Recent Predictions</h2>
-            <span className="text-sm text-gray-400">
-              Total: {predictions.length} predictions
-            </span>
-          </div>
-
-          {predictions.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-lg">No predictions found. Generate one to get started!</p>
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {predictions.map((prediction) => (
-                <div key={prediction.id} className="border border-gray-700 rounded-lg p-4 bg-gray-800">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg text-white">
-                          {prediction.crops?.name || 'Unknown Crop'}
-                        </h3>
-                        <span className="text-sm text-gray-400">
-                          in {prediction.regions?.name || 'Unknown Region'}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="font-medium text-gray-300">Yield:</span>
-                          <span className="text-green-400 ml-1">
-                            {prediction.yield?.toFixed(2)} units
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-300">Risk Score:</span>
-                          <span className={`ml-1 ${getRiskColor(prediction.risk_score)}`}>
-                            {(prediction.risk_score * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-300">Created:</span>
-                          <span className="text-gray-400 ml-1">
-                            {new Date(prediction.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-300">User:</span>
-                          <span className="text-gray-400 ml-1">
-                            {prediction.user_id ? 'Yes' : 'No'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {prediction.features && (
-                        <details className="mt-3">
-                          <summary className="cursor-pointer text-sm text-blue-400 hover:text-blue-300">
-                            View Features
-                          </summary>
-                          <div className="mt-2 p-3 bg-gray-700 rounded text-xs">
-                            <pre className="whitespace-pre-wrap text-gray-200">
-                              {JSON.stringify(prediction.features, null, 2)}
-                            </pre>
-                          </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-300">
+                        <span className="text-gray-400">Endpoint:</span> {call.method} {call.endpoint}
+                      </p>
+                      {call.responseTime && (
+                        <p className="text-gray-300">
+                          <span className="text-gray-400">Response Time:</span> {call.responseTime}ms
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      {call.error && (
+                        <p className="text-red-400">
+                          <span className="text-gray-400">Error:</span> {call.error}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      {call.response && call.status === 'success' && (
+                        <details className="text-gray-300">
+                          <summary className="cursor-pointer text-blue-400">View Response</summary>
+                          <pre className="mt-2 text-xs bg-gray-800 p-2 rounded overflow-x-auto">
+                            {JSON.stringify(call.response, null, 2)}
+                          </pre>
                         </details>
                       )}
                     </div>
@@ -430,35 +307,405 @@ export default function PredictionsPage() {
                 </div>
               ))}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Pipeline Analysis Panel */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold text-white mb-4">🚀 Enhanced Pipeline Analysis</h2>
+          <AgriPipelinePanel region="nagpur" />
         </div>
 
-        {/* Statistics */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-blue-400">{predictions.length}</p>
-            <p className="text-sm text-gray-400">Total Predictions</p>
+        {/* Pipeline Results Display */}
+        {pipelineResults && (
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-2xl font-semibold text-white mb-4">📊 Pipeline Analysis Results</h2>
+            <div className="space-y-4">
+              {/* Location Data */}
+              {pipelineResults.location && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-white mb-3">📍 Location Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p><span className="text-gray-400">Coordinates:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.location.coordinates?.lat}, {pipelineResults.location.coordinates?.lon}
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Agricultural Zone:</span> 
+                        <span className="text-white ml-2">{pipelineResults.location.agriculturalZone?.zone || 'N/A'}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Soil Type:</span> 
+                        <span className="text-white ml-2">{pipelineResults.location.soilClassification?.type || 'N/A'}</span>
+                      </p>
+                      <p><span className="text-gray-400">Climate:</span> 
+                        <span className="text-white ml-2">{pipelineResults.location.climateData?.type || 'N/A'}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Elevation:</span> 
+                        <span className="text-white ml-2">{pipelineResults.location.elevation || 'N/A'}m</span>
+                      </p>
+                      <p><span className="text-gray-400">Address:</span> 
+                        <span className="text-white ml-2">{pipelineResults.location.address || 'N/A'}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Weather Data */}
+              {pipelineResults.dataCollection?.weather && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-white mb-3">🌤️ Weather Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p><span className="text-gray-400">Current Temp:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.current?.temperature_2m || 'N/A'}°C
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Humidity:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.current?.relative_humidity_2m || 'N/A'}%
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Max Temp:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.daily?.temperature_2m_max?.[0] || 'N/A'}°C
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Min Temp:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.daily?.temperature_2m_min?.[0] || 'N/A'}°C
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Precipitation:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.daily?.precipitation_sum?.[0] || 'N/A'} mm
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Wind Speed:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.current?.wind_speed_10m || 'N/A'} km/h
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Source:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.source || 'Open-Meteo API'}
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Updated:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.weather.timestamp ? 
+                            new Date(pipelineResults.dataCollection.weather.timestamp).toLocaleString() : 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Environmental Data */}
+              {pipelineResults.dataCollection?.environmental && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-white mb-3">🌱 Environmental Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p><span className="text-gray-400">NDVI Index:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.environmental.ndvi?.value || 'N/A'}
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Soil Moisture:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.environmental.soilMoisture?.value || 'N/A'}%
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Land Use:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.environmental.landUse?.type || 'N/A'}
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Coverage:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.environmental.coverage || 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Source:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.environmental.source || 'N/A'}
+                        </span>
+                      </p>
+                      <p><span className="text-gray-400">Resolution:</span> 
+                        <span className="text-white ml-2">
+                          {pipelineResults.dataCollection.environmental.resolution || 'N/A'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Agricultural Insights */}
+              {pipelineResults.insights && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-white mb-3">🌾 Agricultural Insights</h3>
+                  <div className="space-y-3">
+                    {pipelineResults.insights.map((insight, index) => (
+                      <div key={index} className="bg-gray-600 rounded p-3">
+                        <h4 className="text-white font-medium mb-2">{insight.type || `Insight ${index + 1}`}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p><span className="text-gray-400">Overall Score:</span> 
+                              <span className={`ml-2 px-2 py-1 rounded text-xs ${getHealthColor(insight.data?.overall)}`}>
+                                {insight.data?.overall || 'Unknown'}
+                              </span>
+                            </p>
+                            {insight.data?.factors && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Factors:</p>
+                                <ul className="ml-4 text-gray-300">
+                                  {insight.data.factors.map((factor, idx) => (
+                                    <li key={idx} className="text-xs">• {factor}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            {insight.data?.recommendations && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Recommendations:</p>
+                                <ul className="ml-4 text-gray-300">
+                                  {insight.data.recommendations.map((rec, idx) => (
+                                    <li key={idx} className="text-xs">• {rec}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Crop Recommendations */}
+              {pipelineResults.recommendations && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-white mb-3">💡 Actionable Recommendations</h3>
+                  <div className="space-y-3">
+                    {pipelineResults.recommendations.map((rec, index) => (
+                      <div key={index} className="bg-gray-600 rounded p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-white font-medium">{rec.category || `Recommendation ${index + 1}`}</h4>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            rec.priority === 'high' ? 'bg-red-600 text-white' :
+                            rec.priority === 'medium' ? 'bg-yellow-600 text-white' :
+                            'bg-green-600 text-white'
+                          }`}>
+                            {rec.priority || 'medium'} priority
+                          </span>
+                        </div>
+                        <p className="text-gray-300 text-sm mb-2">{rec.action || rec.message}</p>
+                        {rec.reasoning && (
+                          <p className="text-gray-400 text-xs">Reasoning: {rec.reasoning}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notification Status */}
+              {pipelineResults.notification && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-white mb-3">📱 Notification Status</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p><span className="text-gray-400">SMS Status:</span> 
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          pipelineResults.notification.sms?.success ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                        }`}>
+                          {pipelineResults.notification.sms?.success ? '✅ Sent' : '❌ Failed'}
+                        </span>
+                      </p>
+                      {pipelineResults.notification.sms?.error && (
+                        <p className="text-red-400 text-xs mt-1">{pipelineResults.notification.sms.error}</p>
+                      )}
+                    </div>
+                    <div>
+                      <p><span className="text-gray-400">Voice Status:</span> 
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          pipelineResults.notification.voice?.success ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                        }`}>
+                          {pipelineResults.notification.voice?.success ? '✅ Sent' : '❌ Failed'}
+                        </span>
+                      </p>
+                      {pipelineResults.notification.voice?.error && (
+                        <p className="text-red-400 text-xs mt-1">{pipelineResults.notification.voice.error}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-green-400">
-              {predictions.length > 0 ? (predictions.reduce((sum, p) => sum + p.yield, 0) / predictions.length).toFixed(1) : 0}
-            </p>
-            <p className="text-sm text-gray-400">Avg Yield</p>
+        )}
+
+        {/* Prediction Generation Controls */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold text-white mb-4">🎯 Generate New Predictions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">User ID</label>
+              <input
+                type="text"
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter User ID"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Crop</label>
+              <select
+                value={selectedCrop}
+                onChange={(e) => setSelectedCrop(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Crop</option>
+                {crops.map((crop) => (
+                  <option key={crop.id} value={crop.id}>
+                    {crop.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Region</label>
+              <select
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Region</option>
+                {regions.map((region) => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end space-x-2">
+              <button
+                onClick={generatePrediction}
+                disabled={loading || !selectedCrop || !selectedRegion}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded"
+              >
+                {loading ? 'Generating...' : 'Generate'}
+              </button>
+              <button
+                onClick={runPipelineAnalysis}
+                disabled={loading}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded"
+              >
+                {loading ? 'Running...' : 'Run Pipeline'}
+              </button>
+            </div>
           </div>
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-red-400">
-              {predictions.length > 0 ? (predictions.filter(p => p.risk_score > 0.5).length / predictions.length * 100).toFixed(1) : 0}%
-            </p>
-            <p className="text-sm text-gray-400">High Risk %</p>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+        </div>
+
+        {/* Pipeline Data Analysis Charts */}
+        {pipelineResults && (
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-2xl font-semibold text-white mb-4">📊 Pipeline Data Analysis Charts</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-3">Soil Health Analysis</h3>
+                <SoilHealthChart predictions={predictions} crops={crops} />
+              </div>
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-3">Weather Impact Analysis</h3>
+                <WeatherImpactChart predictions={predictions} crops={crops} />
+              </div>
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-3">Crop Performance Comparison</h3>
+                <CropPerformanceChart predictions={predictions} crops={crops} />
+              </div>
+              <div className="bg-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-3">Seasonal Analysis</h3>
+                <SeasonalAnalysisChart predictions={predictions} crops={crops} />
+              </div>
+            </div>
           </div>
-          <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6 text-center">
-            <p className="text-2xl font-bold text-purple-400">
-              {new Set(predictions.map(p => p.crops?.name).filter(Boolean)).size}
-            </p>
-            <p className="text-sm text-gray-400">Unique Crops</p>
+        )}
+
+        {/* Traditional Charts */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold text-white mb-4">📈 Traditional Analytics</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-3">Yield Trends</h3>
+              <YieldTrendChart predictions={predictions} />
+            </div>
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-3">Regional Performance</h3>
+              <RegionalPerformanceChart predictions={predictions} regions={regions} />
+            </div>
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-3">Crop Distribution</h3>
+              <CropDistributionChart predictions={predictions} crops={crops} />
+            </div>
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-white mb-3">Productivity Zones</h3>
+              <ProductivityZoneMap predictions={predictions} />
+            </div>
           </div>
+        </div>
+
+        {/* Additional Panels */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <WeatherAlertSystem predictions={predictions} />
+          <SatelliteDataDashboard />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ImageAnalysisDashboard />
+          <NasaPanel />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AlertsPanel />
+          <VoicePanel />
         </div>
       </div>
     </div>
   )
+}
+
+// Helper functions for styling
+function getHealthColor(health) {
+  switch (health?.toLowerCase()) {
+    case 'excellent': return 'bg-green-600 text-white'
+    case 'good': return 'bg-blue-600 text-white'
+    case 'fair': return 'bg-yellow-600 text-white'
+    case 'poor': return 'bg-red-600 text-white'
+    default: return 'bg-gray-600 text-white'
+  }
 }

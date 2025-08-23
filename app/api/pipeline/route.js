@@ -8,242 +8,162 @@ import { securityMiddleware } from '../../../lib/securityMiddleware.js'
 import { cacheService } from '../../../lib/cacheService.js'
 
 export async function POST(request) {
-  const logger = enhancedLogger.with({ route: '/api/pipeline' })
+  const startTime = Date.now()
+  const requestId = `pipeline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  console.log(`🚀 [${requestId}] Pipeline API Called: POST /api/pipeline`)
+  console.log(`📊 [${requestId}] Request received at: ${new Date().toISOString()}`)
   
   try {
-    // Security checks
-    const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    
-    // Rate limiting
-    if (!securityMiddleware.checkRateLimit(clientIP)) {
-      logger.warn('rate_limit_exceeded', { clientIP })
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Rate limit exceeded. Please try again later.' 
-      }, { status: 429 })
-    }
-
-    // Check for suspicious activity
-    if (securityMiddleware.detectSuspiciousActivity(request)) {
-      logger.warn('suspicious_activity_detected', { clientIP })
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Invalid request detected.' 
-      }, { status: 400 })
-    }
-
     const body = await request.json()
-    const { region, farmerData, userId, regionId, cropId, phoneNumber = '+919322909257' } = body
+    const { region, phoneNumber, userId, farmerData } = body
 
-    // Input validation
-    if (region) {
-      const regionValidation = securityMiddleware.validateRegion(region)
-      if (!regionValidation.isValid) {
-        logger.warn('invalid_region', { region, errors: regionValidation.errors })
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Invalid region format',
-          details: regionValidation.errors 
-        }, { status: 400 })
-      }
-    }
+    console.log(`📋 [${requestId}] Request Data:`, {
+      hasRegion: !!region,
+      hasPhoneNumber: !!phoneNumber,
+      hasUserId: !!userId,
+      hasFarmerData: !!farmerData,
+      farmerDataKeys: farmerData ? Object.keys(farmerData) : []
+    })
 
-    if (phoneNumber) {
-      const phoneValidation = securityMiddleware.validatePhoneNumber(phoneNumber)
-      if (!phoneValidation.isValid) {
-        logger.warn('invalid_phone', { phoneNumber, errors: phoneValidation.errors })
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Invalid phone number format',
-          details: phoneValidation.errors 
-        }, { status: 400 })
-      }
+    // Apply security middleware
+    const securityResult = securityMiddleware.validateInput(body, {
+      region: { required: false, type: 'string' },
+      phoneNumber: { required: false, type: 'string' },
+      userId: { required: false, type: 'string' },
+      farmerData: { required: false, type: 'object' }
+    })
+    if (!securityResult.isValid) {
+      console.warn(`⚠️ [${requestId}] Security validation failed:`, securityResult.errors)
+      return NextResponse.json({ error: 'Invalid input data', details: securityResult.errors }, { status: 400 })
     }
 
-    if (userId) {
-      const userIdValidation = securityMiddleware.validateUserId(userId)
-      if (!userIdValidation.isValid) {
-        logger.warn('invalid_user_id', { userId, errors: userIdValidation.errors })
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Invalid user ID format',
-          details: userIdValidation.errors 
-        }, { status: 400 })
-      }
+    // Check rate limiting
+    const rateLimitResult = securityMiddleware.checkRateLimit(userId || phoneNumber || region || 'anonymous')
+    if (!rateLimitResult.allowed) {
+      console.warn(`⚠️ [${requestId}] Rate limit exceeded for:`, userId || phoneNumber || region || 'anonymous')
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
-    
-    if (!region && !farmerData) {
-      return NextResponse.json({ success: false, error: 'Either region or farmerData is required' }, { status: 400 })
+
+    // Detect suspicious activity
+    const suspiciousActivity = securityMiddleware.detectSuspiciousActivity(request)
+    if (suspiciousActivity) {
+      console.warn(`🚨 [${requestId}] Suspicious activity detected`)
+      return NextResponse.json({ error: 'Suspicious activity detected' }, { status: 403 })
     }
-    
-    let result
-    let storedResult = { success: false }
-    let notificationResult = { success: false }
-    
+
+    let result, storedResult, notificationResult
+
     if (farmerData) {
-      // Use enhanced automated pipeline for farmer data
-      try {
-        // Check cache first for farmer analysis
-        const cacheKey = `farmer_analysis:${farmerData.farmerId || 'default'}`
-        result = await cacheService.getOrSet(cacheKey, async () => {
+      console.log(`👨‍🌾 [${requestId}] Running Enhanced Farmer Pipeline for farmer:`, farmerData.farmerId)
+      
+      // Enhanced pipeline with caching
+      result = await cacheService.getOrSet(
+        `farmer_analysis:${farmerData.farmerId}`,
+        async () => {
+          console.log(`🔄 [${requestId}] Cache miss - executing enhanced pipeline`)
           return await enhancedAutomatedPipeline.executeFarmerPipeline(farmerData)
-        }, 300000) // 5 minutes cache
-        
-        // Transform enhanced pipeline result to match pipeline structure
-        if (result.success) {
-          result = {
-            success: true,
-            pipelineId: result.pipelineId,
-            timestamp: result.timestamp,
-            dataCollection: {
-              weather: result.dataCollection?.weather || result.weather,
-              environmental: result.dataCollection?.environmental || result.environmental,
-              imageAnalysis: result.dataCollection?.imageAnalysis || result.imageAnalysis
-            },
-            insights: [
-              {
-                type: 'soil_health',
-                severity: 'medium',
-                message: `Soil Health: ${result.insights?.soilHealth?.overall || 'Unknown'}`,
-                data: result.insights?.soilHealth
-              },
-              {
-                type: 'crop_suitability',
-                severity: 'medium',
-                message: `Crop Suitability: ${result.insights?.cropSuitability?.bestCrops?.length || 0} recommended crops`,
-                data: result.insights?.cropSuitability
-              },
-              {
-                type: 'water_management',
-                severity: 'medium',
-                message: `Water Management: ${result.insights?.waterManagement?.irrigationNeeds || 'Unknown'} irrigation needs`,
-                data: result.insights?.waterManagement
-              }
-            ],
-            predictions: [
-              {
-                type: 'yield_prediction',
-                severity: 'medium',
-                message: `Yield Potential: ${result.insights?.yieldPotential?.overall || 'Unknown'}`,
-                data: result.insights?.yieldPotential
-              },
-              {
-                type: 'risk_prediction',
-                severity: result.insights?.pestRisk?.overall === 'High' ? 'high' : 'medium',
-                message: `Pest Risk: ${result.insights?.pestRisk?.overall || 'Unknown'}`,
-                data: result.insights?.pestRisk
-              }
-            ],
-            alerts: result.recommendations?.filter(r => r.priority === 'High').map(r => ({
-              type: 'high_priority_recommendation',
-              severity: 'high',
-              message: r.action
-            })) || []
-          }
-          
-          // Store results in database for farmer analysis
-          storedResult = await storeFarmerAnalysisResults(result, phoneNumber)
-          
-          // Enhanced pipeline already sends notifications, so use the result from the pipeline
-          notificationResult = result.notification || { success: false, method: 'None' }
-        }
-      } catch (enhancedError) {
-        logger.error('enhanced_pipeline_failed', { error: enhancedError.message })
-        
-        // Fallback to standard pipeline if enhanced fails
-        logger.info('falling_back_to_standard_pipeline')
-        result = await automatedPipeline.executePipeline(region || 'maharashtra')
-        
-        if (result.success) {
-          // Store fallback results
-          storedResult = await storeFarmerAnalysisResults(result, phoneNumber)
-          notificationResult = await sendFarmerNotification(result, phoneNumber)
-        }
-      }
-    } else {
-      // Use standard pipeline for region-based analysis
-      // Check cache first for region analysis
-      const cacheKey = `region_analysis:${region}`
-      result = await cacheService.getOrSet(cacheKey, async () => {
-        return await automatedPipeline.executePipeline(region)
-      }, 600000) // 10 minutes cache
-    }
-    
-    if (result.success) {
-      
-      // Persist prediction summary and alerts if regionId/cropId provided
-      try {
-        if (regionId && cropId) {
-          const features = {
-            weather: result?.dataCollection?.weather || null,
-            nasa: result?.dataCollection?.nasa || null,
-            gee: result?.dataCollection?.gee || result?.dataCollection?.environmental || null,
-            imageAnalysis: result?.dataCollection?.imageAnalysis || null,
-            insights: result?.insights || [],
-            predictions: result?.predictions || []
-          }
-
-          const yieldPred = (result?.predictions || []).find(p => p.type === 'yield_prediction')
-          const riskPred = (result?.predictions || []).find(p => p.type === 'risk_prediction')
-
-          const { data: predictionRow, error: predErr } = await databaseService.withRetry(async () => {
-            return await databaseService.client
-              .from('predictions')
-              .insert({
-                user_id: userId || null,
-                crop_id: cropId,
-                region_id: regionId,
-                features,
-                yield: yieldPred?.data?.yieldChange ?? yieldPred?.data?.score ?? 0,
-                risk_score: riskPred ? (riskPred.severity === 'high' ? 0.8 : 0.5) : 0
-              })
-              .select()
-              .single()
-          }, 'insert_prediction')
-
-                      if (!predErr && predictionRow && Array.isArray(result.alerts) && result.alerts.length > 0) {
-              const alertRows = result.alerts.map(a => ({
-                prediction_id: predictionRow.id,
-                type: a.type,
-                message: a.message
-              }))
-              await databaseService.withRetry(async () => {
-                return await databaseService.client.from('alerts').insert(alertRows)
-              }, 'insert_alerts')
-            }
-        }
-      } catch (persistErr) {
-        logger.error('pipeline_persist_failed', { error: persistErr?.message })
-      }
-
-      // Add database and notification results to response
-      const response = {
-        ...result,
-        database: {
-          stored: storedResult.success,
-          recordId: storedResult.recordId
         },
-        notification: {
-          sent: notificationResult.success,
-          method: notificationResult.method
+        5 * 60 * 1000 // 5 minutes
+      )
+
+      console.log(`✅ [${requestId}] Enhanced pipeline completed:`, {
+        success: result.success,
+        hasLocation: !!result.location,
+        hasDataCollection: !!result.dataCollection,
+        hasInsights: !!result.insights,
+        hasRecommendations: !!result.recommendations,
+        hasNotification: !!result.notification
+      })
+
+      // Store results in database for farmer analysis
+      storedResult = await storeFarmerAnalysisResults(result, phoneNumber)
+      
+      // Enhanced pipeline already sends notifications, so use the result from the pipeline
+      notificationResult = result.notification || { success: false, method: 'None' }
+      
+      console.log(`💾 [${requestId}] Farmer analysis results stored:`, {
+        stored: !!storedResult,
+        notification: notificationResult
+      })
+
+    } else {
+      console.log(`🌍 [${requestId}] Running Standard Pipeline for region:`, region)
+      
+      // Standard pipeline with caching
+      result = await cacheService.getOrSet(
+        `pipeline:${region}`,
+        async () => {
+          console.log(`🔄 [${requestId}] Cache miss - executing standard pipeline`)
+          return await automatedPipeline.executePipeline(region)
+        },
+        10 * 60 * 1000 // 10 minutes
+      )
+
+      console.log(`✅ [${requestId}] Standard pipeline completed:`, {
+        success: result.success,
+        hasDataCollection: !!result.dataCollection,
+        hasInsights: !!result.insights,
+        hasPredictions: !!result.predictions,
+        hasAlerts: !!result.alerts
+      })
+
+      // Transform enhanced pipeline result to match pipeline structure
+      if (result.success) {
+        result = {
+          success: true,
+          pipelineId: result.pipelineId,
+          timestamp: result.timestamp,
+          dataCollection: {
+            weather: result.dataCollection?.weather || result.weather,
+            environmental: result.dataCollection?.environmental || result.environmental,
+            imageAnalysis: result.dataCollection?.imageAnalysis || result.imageAnalysis
+          },
+          insights: result.insights || [],
+          predictions: result.predictions || [],
+          alerts: result.alerts || []
         }
       }
 
-      return NextResponse.json(response)
-    } else {
-      logger.error('pipeline_execution_failed', { 
-        pipelineId: result.pipelineId,
-        error: result.error 
-      })
+      // Store results in database
+      storedResult = await storePipelineResults(result, region)
       
-      return NextResponse.json(result, { status: 500 })
+      // Send notification to farmer
+      notificationResult = await sendFarmerNotification(result, phoneNumber)
+      
+      console.log(`💾 [${requestId}] Standard pipeline results stored:`, {
+        stored: !!storedResult,
+        notification: notificationResult
+      })
     }
+
+    const responseTime = Date.now() - startTime
+    console.log(`🏁 [${requestId}] Pipeline request completed in ${responseTime}ms`)
+
+    return NextResponse.json({
+      ...result,
+      metadata: {
+        requestId,
+        responseTime: `${responseTime}ms`,
+        cached: result.cached || false,
+        stored: !!storedResult,
+        notification: notificationResult
+      }
+    })
+
   } catch (error) {
-    logger.error('pipeline_request_failed', { error: error.message })
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message 
-    }, { status: 500 })
+    const responseTime = Date.now() - startTime
+    console.error(`❌ [${requestId}] Pipeline request failed after ${responseTime}ms:`, error)
+    
+    return NextResponse.json(
+      { 
+        error: 'Pipeline execution failed',
+        details: error.message,
+        requestId,
+        responseTime: `${responseTime}ms`
+      },
+      { status: 500 }
+    )
   }
 }
 

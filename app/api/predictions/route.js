@@ -3,10 +3,16 @@ import { supabase } from '../../../lib/supabaseClient'
 
 // POST: Create a new prediction
 export async function POST(request) {
+  const startTime = Date.now()
+  const requestId = `pred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  console.log(`🤖 [${requestId}] AI Model Endpoint Called: POST /api/predictions`)
+  console.log(`📊 [${requestId}] Request received at: ${new Date().toISOString()}`)
+  
   try {
     // Check if Supabase client is properly configured
     if (!supabase) {
-      console.error('Supabase client not initialized')
+      console.error(`❌ [${requestId}] Supabase client not initialized`)
       return NextResponse.json(
         { error: 'Database connection not configured' },
         { status: 500 }
@@ -16,8 +22,26 @@ export async function POST(request) {
     const body = await request.json()
     const { userId, cropId, regionId, features } = body
 
+    console.log(`📋 [${requestId}] Request Data:`, {
+      userId,
+      cropId,
+      regionId,
+      features: {
+        temperature: features?.temperature,
+        humidity: features?.humidity,
+        rainfall: features?.rainfall,
+        wind_speed: features?.wind_speed,
+        soil_moisture: features?.soil_moisture,
+        nitrogen: features?.nitrogen,
+        phosphorus: features?.phosphorus,
+        potassium: features?.potassium,
+        ph: features?.ph
+      }
+    })
+
     // Validate required fields
     if (!cropId || !regionId || !features) {
+      console.warn(`⚠️ [${requestId}] Missing required fields:`, { cropId, regionId, features: !!features })
       return NextResponse.json(
         { error: 'Missing required fields: cropId, regionId, features' },
         { status: 400 }
@@ -25,6 +49,7 @@ export async function POST(request) {
     }
 
     // Get crop and region details for ONNX model
+    console.log(`🔍 [${requestId}] Fetching crop and region data from database...`)
     const { data: cropData, error: cropError } = await supabase
       .from('crops')
       .select('name, season')
@@ -32,7 +57,7 @@ export async function POST(request) {
       .single()
 
     if (cropError || !cropData) {
-      console.error('Crop not found:', cropError)
+      console.error(`❌ [${requestId}] Crop not found:`, cropError)
       return NextResponse.json(
         { error: 'Crop not found' },
         { status: 400 }
@@ -46,12 +71,18 @@ export async function POST(request) {
       .single()
 
     if (regionError || !regionData) {
-      console.error('Region not found:', regionError)
+      console.error(`❌ [${requestId}] Region not found:`, regionError)
       return NextResponse.json(
         { error: 'Region not found' },
         { status: 400 }
       )
     }
+
+    console.log(`✅ [${requestId}] Database lookup successful:`, {
+      crop: cropData.name,
+      season: cropData.season,
+      region: regionData.name
+    })
 
     // Use ONNX model for prediction via Render backend
     let yield_prediction, risk_score
@@ -59,6 +90,8 @@ export async function POST(request) {
     try {
       // Backend URL - replace with your actual Render URL
       const BACKEND_URL = process.env.BACKEND_URL || 'https://your-render-backend-url.onrender.com';
+      
+      console.log(`🚀 [${requestId}] Calling ONNX Backend: ${BACKEND_URL}/predict`)
       
       // Map features to ONNX schema format
       const onnxFeatures = {
@@ -71,6 +104,8 @@ export async function POST(request) {
           region: regionData.name
         }
       };
+
+      console.log(`📤 [${requestId}] ONNX Request Payload:`, onnxFeatures)
       
       // Run ONNX prediction via backend
       const predictionResponse = await fetch(`${BACKEND_URL}/predict`, {
@@ -88,162 +123,214 @@ export async function POST(request) {
       const predictionData = await predictionResponse.json();
       yield_prediction = predictionData.prediction;
       
+      console.log(`✅ [${requestId}] ONNX Backend Response:`, predictionData)
+      
       // Calculate risk score based on prediction and features
       risk_score = calculateRiskScore(features, yield_prediction)
       
-      console.log('Backend ONNX prediction successful:', { yield_prediction, risk_score })
+      console.log(`✅ [${requestId}] Backend ONNX prediction successful:`, { yield_prediction, risk_score })
     } catch (onnxError) {
-      console.log('ONNX backend not available, using fallback ML prediction. Error:', onnxError.message)
+      console.log(`⚠️ [${requestId}] ONNX backend not available, using fallback ML prediction. Error:`, onnxError.message)
       
       // Fallback to ML-based prediction using features
       yield_prediction = calculateMLPrediction(features, cropData, regionData)
       risk_score = calculateRiskScore(features, yield_prediction)
+      
+      console.log(`🔄 [${requestId}] Fallback ML prediction generated:`, { yield_prediction, risk_score })
     }
 
-    console.log('Attempting to insert prediction:', { cropId, regionId, userId })
+    // Create prediction record
+    const predictionRecord = {
+      user_id: userId,
+      crop_id: cropId,
+      region_id: regionId,
+      yield_prediction,
+      risk_score,
+      features: features,
+      created_at: new Date().toISOString()
+    }
 
-    // Insert prediction into database
-    const { data, error } = await supabase
+    console.log(`💾 [${requestId}] Storing prediction in database:`, {
+      yield_prediction,
+      risk_score,
+      features_count: Object.keys(features).length
+    })
+
+    const { data: storedPrediction, error: insertError } = await supabase
       .from('predictions')
-      .insert({
-        user_id: userId || null, // Allow null or string user_id
-        crop_id: cropId,
-        region_id: regionId,
-        features: features,
-        yield: yield_prediction,
-        risk_score: risk_score
-      })
+      .insert([predictionRecord])
       .select()
-      .single()
 
-    if (error) {
-      console.error('Supabase error:', error)
+    if (insertError) {
+      console.error(`❌ [${requestId}] Failed to store prediction:`, insertError)
       return NextResponse.json(
-        { error: 'Failed to create prediction', details: error.message },
+        { error: 'Failed to store prediction' },
         { status: 500 }
       )
     }
 
-    console.log('Prediction created successfully:', data)
-    return NextResponse.json(data)
+    console.log(`✅ [${requestId}] Prediction stored successfully with ID:`, storedPrediction[0].id)
+
+    const responseTime = Date.now() - startTime
+    console.log(`🏁 [${requestId}] Request completed in ${responseTime}ms`)
+
+    return NextResponse.json({
+      success: true,
+      prediction: {
+        id: storedPrediction[0].id,
+        yield_prediction,
+        risk_score,
+        crop: cropData.name,
+        region: regionData.name,
+        timestamp: storedPrediction[0].created_at
+      },
+      metadata: {
+        requestId,
+        responseTime: `${responseTime}ms`,
+        model: onnxError ? 'Fallback ML' : 'ONNX Backend',
+        features_used: Object.keys(features).length
+      }
+    })
+
   } catch (error) {
-    console.error('API error:', error)
+    const responseTime = Date.now() - startTime
+    console.error(`❌ [${requestId}] Prediction generation failed after ${responseTime}ms:`, error)
+    
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { 
+        error: 'Internal server error',
+        requestId,
+        responseTime: `${responseTime}ms`
+      },
       { status: 500 }
     )
   }
 }
 
-// ML-based prediction calculation (fallback)
-function calculateMLPrediction(features, cropData, regionData) {
-  // Base yield for different crops
-  const baseYields = {
-    'Rice': 80,
-    'Wheat': 75,
-    'Maize': 85,
-    'Cotton': 60,
-    'Sugarcane': 120,
-    'Pulses': 70,
-    'Oilseeds': 65,
-    'Vegetables': 90,
-    'Fruits': 95,
-    'Tea': 55,
-    'Coffee': 50,
-    'Spices': 45
-  }
+// GET: Retrieve predictions
+export async function GET(request) {
+  const startTime = Date.now()
+  const requestId = `pred_get_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   
-  const baseYield = baseYields[cropData.name] || 75
+  console.log(`🔍 [${requestId}] AI Model Endpoint Called: GET /api/predictions`)
+  console.log(`📊 [${requestId}] Request received at: ${new Date().toISOString()}`)
   
-  // Environmental factors
-  const tempFactor = features.temperature ? Math.max(0.5, Math.min(1.5, 1 + (features.temperature - 25) / 50)) : 1
-  const moistureFactor = features.soil_moisture ? Math.max(0.6, Math.min(1.4, features.soil_moisture * 2)) : 1
-  const phFactor = features.ph ? Math.max(0.7, Math.min(1.3, 1 + (features.ph - 6.5) / 10)) : 1
-  const npkFactor = features.soil_n && features.soil_p && features.soil_k ? 
-    Math.max(0.8, Math.min(1.2, (features.soil_n + features.soil_p + features.soil_k) / 150)) : 1
-  
-  // Calculate final yield
-  const finalYield = baseYield * tempFactor * moistureFactor * phFactor * npkFactor
-  
-  // Add some randomness (±10%)
-  const randomFactor = 0.9 + Math.random() * 0.2
-  
-  return Math.round(finalYield * randomFactor)
-}
-
-// Risk score calculation based on features and prediction
-function calculateRiskScore(features, yieldPrediction) {
-  let riskScore = 0.1 // Base risk
-  
-  // Temperature risk
-  if (features.temperature < 10 || features.temperature > 40) {
-    riskScore += 0.3
-  } else if (features.temperature < 15 || features.temperature > 35) {
-    riskScore += 0.2
-  }
-  
-  // Moisture risk
-  if (features.soil_moisture < 0.2 || features.soil_moisture > 0.8) {
-    riskScore += 0.25
-  }
-  
-  // pH risk
-  if (features.ph < 5.5 || features.ph > 8.5) {
-    riskScore += 0.2
-  }
-  
-  // NPK risk
-  if (features.soil_n < 20 || features.soil_p < 15 || features.soil_k < 10) {
-    riskScore += 0.15
-  }
-  
-  // Yield-based risk
-  if (yieldPrediction < 50) {
-    riskScore += 0.2
-  }
-  
-  return Math.min(0.9, Math.max(0.1, riskScore))
-}
-
-// GET: Retrieve last 10 predictions
-export async function GET() {
   try {
-    // Check if Supabase client is properly configured
-    if (!supabase) {
-      console.error('Supabase client not initialized')
-      return NextResponse.json(
-        { error: 'Database connection not configured' },
-        { status: 500 }
-      )
-    }
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const cropId = searchParams.get('cropId')
+    const limit = parseInt(searchParams.get('limit')) || 100
 
-    console.log('Fetching predictions from database...')
+    console.log(`📋 [${requestId}] Query Parameters:`, { userId, cropId, limit })
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('predictions')
       .select(`
         *,
-        crops (name, season),
-        regions (name, lat, lon)
+        crops(name, season),
+        regions(name)
       `)
       .order('created_at', { ascending: false })
-      .limit(10)
+      .limit(limit)
+
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+    if (cropId) {
+      query = query.eq('crop_id', cropId)
+    }
+
+    const { data: predictions, error } = await query
 
     if (error) {
-      console.error('Supabase error:', error)
+      console.error(`❌ [${requestId}] Database query failed:`, error)
       return NextResponse.json(
-        { error: 'Failed to fetch predictions', details: error.message },
+        { error: 'Failed to fetch predictions' },
         { status: 500 }
       )
     }
 
-    console.log(`Fetched ${data?.length || 0} predictions`)
-    return NextResponse.json(data)
+    const responseTime = Date.now() - startTime
+    console.log(`✅ [${requestId}] Retrieved ${predictions.length} predictions in ${responseTime}ms`)
+
+    return NextResponse.json(predictions)
+
   } catch (error) {
-    console.error('API error:', error)
+    const responseTime = Date.now() - startTime
+    console.error(`❌ [${requestId}] Prediction retrieval failed after ${responseTime}ms:`, error)
+    
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { 
+        error: 'Internal server error',
+        requestId,
+        responseTime: `${responseTime}ms`
+      },
       { status: 500 }
     )
   }
+}
+
+// Helper function to calculate risk score
+function calculateRiskScore(features, yield_prediction) {
+  let riskScore = 0
+  
+  // Temperature risk
+  if (features.temperature > 35 || features.temperature < 10) {
+    riskScore += 25
+  } else if (features.temperature > 30 || features.temperature < 15) {
+    riskScore += 15
+  }
+  
+  // Humidity risk
+  if (features.humidity > 90 || features.humidity < 30) {
+    riskScore += 20
+  }
+  
+  // Soil moisture risk
+  if (features.soil_moisture < 0.3 || features.soil_moisture > 0.8) {
+    riskScore += 20
+  }
+  
+  // pH risk
+  if (features.ph < 5.5 || features.ph > 7.5) {
+    riskScore += 15
+  }
+  
+  // Yield prediction adjustment
+  if (yield_prediction < 0.5) {
+    riskScore += 20
+  }
+  
+  return Math.min(100, Math.max(0, riskScore))
+}
+
+// Helper function for ML-based prediction
+function calculateMLPrediction(features, cropData, regionData) {
+  // Simple ML-based prediction using feature weights
+  let baseYield = 0.7
+  
+  // Temperature factor
+  const tempFactor = features.temperature >= 20 && features.temperature <= 30 ? 1.2 : 0.8
+  
+  // Humidity factor
+  const humidityFactor = features.humidity >= 50 && features.humidity <= 80 ? 1.1 : 0.9
+  
+  // Soil moisture factor
+  const moistureFactor = features.soil_moisture >= 0.4 && features.soil_moisture <= 0.7 ? 1.15 : 0.85
+  
+  // pH factor
+  const phFactor = features.ph >= 6.0 && features.ph <= 7.0 ? 1.1 : 0.9
+  
+  // Crop-specific adjustments
+  let cropFactor = 1.0
+  if (cropData.name.toLowerCase().includes('rice')) {
+    cropFactor = 1.2 // Rice likes humidity
+  } else if (cropData.name.toLowerCase().includes('wheat')) {
+    cropFactor = 0.9 // Wheat prefers moderate conditions
+  }
+  
+  // Calculate final yield
+  const finalYield = baseYield * tempFactor * humidityFactor * moistureFactor * phFactor * cropFactor
+  
+  return Math.max(0.1, Math.min(1.0, finalYield))
 }
