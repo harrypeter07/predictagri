@@ -32,6 +32,7 @@ export default function PredictionsPage() {
   const [selectedUser, setSelectedUser] = useState('')
 
   const [pipelineResults, setPipelineResults] = useState(null)
+  const [aiModelCalls, setAiModelCalls] = useState([])
 
   useEffect(() => {
     fetchData()

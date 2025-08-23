@@ -303,8 +303,8 @@ async function checkNotificationServiceHealth() {
       configured: hasTwilioConfig,
       details: hasTwilioConfig ? 'Notification service configured' : 'Notification service not configured',
       capabilities: {
-        sms: hasTwilioConfig,
-        voice: hasTwilioConfig,
+            sms: hasTwilioConfig,
+    voice: false, // Voice calls disabled
         email: false // Not implemented yet
       }
     }

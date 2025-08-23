@@ -50,11 +50,23 @@ export async function POST(request) {
 
     // Get crop and region details for ONNX model
     console.log(`🔍 [${requestId}] Fetching crop and region data from database...`)
-    const { data: cropData, error: cropError } = await supabase
-      .from('crops')
-      .select('name, season')
-      .eq('id', cropId)
-      .single()
+    let cropData, cropError, regionData, regionError
+    
+    try {
+      const cropResult = await supabase
+        .from('crops')
+        .select('name, season')
+        .eq('id', cropId)
+        .single()
+      
+      cropData = cropResult.data
+      cropError = cropResult.error
+    } catch (dbError) {
+      console.warn(`⚠️ [${requestId}] Database not available for crop lookup:`, dbError.message)
+      // Use fallback crop data
+      cropData = { name: 'Unknown Crop', season: 'Unknown' }
+      cropError = null
+    }
 
     if (cropError || !cropData) {
       console.error(`❌ [${requestId}] Crop not found:`, cropError)
@@ -64,11 +76,21 @@ export async function POST(request) {
       )
     }
 
-    const { data: regionData, error: regionError } = await supabase
-      .from('regions')
-      .select('name')
-      .eq('id', regionId)
-      .single()
+    try {
+      const regionResult = await supabase
+        .from('regions')
+        .select('name')
+        .eq('id', regionId)
+        .single()
+      
+      regionData = regionResult.data
+      regionError = regionResult.error
+    } catch (dbError) {
+      console.warn(`⚠️ [${requestId}] Database not available for region lookup:`, dbError.message)
+      // Use fallback region data
+      regionData = { name: 'Unknown Region' }
+      regionError = null
+    }
 
     if (regionError || !regionData) {
       console.error(`❌ [${requestId}] Region not found:`, regionError)
@@ -86,10 +108,11 @@ export async function POST(request) {
 
     // Use ONNX model for prediction via Render backend
     let yield_prediction, risk_score
+    let usedFallback = false
     
     try {
-      // Backend URL - replace with your actual Render URL
-      const BACKEND_URL = process.env.BACKEND_URL || 'https://your-render-backend-url.onrender.com';
+      // Backend URL - use environment variable or fallback
+      const BACKEND_URL = process.env.BACKEND_URL || 'https://agribackend-f3ky.onrender.com';
       
       console.log(`🚀 [${requestId}] Calling ONNX Backend: ${BACKEND_URL}/predict`)
       
@@ -137,6 +160,9 @@ export async function POST(request) {
       risk_score = calculateRiskScore(features, yield_prediction)
       
       console.log(`🔄 [${requestId}] Fallback ML prediction generated:`, { yield_prediction, risk_score })
+      
+      // Set flag to indicate fallback was used
+      usedFallback = true;
     }
 
     // Create prediction record
@@ -144,8 +170,8 @@ export async function POST(request) {
       user_id: userId,
       crop_id: cropId,
       region_id: regionId,
-      yield_prediction,
-      risk_score,
+      yield: parseFloat(yield_prediction) || 0, // Ensure numeric type
+      risk_score: parseFloat(risk_score / 100) || 0, // Convert percentage to decimal (0-1)
       features: features,
       created_at: new Date().toISOString()
     }
@@ -155,16 +181,59 @@ export async function POST(request) {
       risk_score,
       features_count: Object.keys(features).length
     })
+    
+    console.log(`💾 [${requestId}] Final prediction record:`, predictionRecord)
 
-    const { data: storedPrediction, error: insertError } = await supabase
-      .from('predictions')
-      .insert([predictionRecord])
-      .select()
+    let storedPrediction, insertError
+    
+    try {
+      const result = await supabase
+        .from('predictions')
+        .insert([predictionRecord])
+        .select()
+      
+      storedPrediction = result.data
+      insertError = result.error
+    } catch (dbError) {
+      console.warn(`⚠️ [${requestId}] Database not available, returning prediction without storage:`, dbError.message)
+      // Return prediction without storing in database
+      const responseTime = Date.now() - startTime
+      return NextResponse.json({
+        success: true,
+        prediction: {
+          id: `temp-${Date.now()}`,
+          yield: yield_prediction,
+          yield_prediction,
+          risk_score: risk_score / 100,
+          crop: cropData.name,
+          region: regionData.name,
+          timestamp: new Date().toISOString()
+        },
+        metadata: {
+          requestId,
+          responseTime: `${responseTime}ms`,
+          model: usedFallback ? 'Fallback ML' : 'ONNX Backend',
+          features_used: Object.keys(features).length,
+          stored: false,
+          note: 'Database not available - prediction returned without storage'
+        }
+      })
+    }
 
     if (insertError) {
       console.error(`❌ [${requestId}] Failed to store prediction:`, insertError)
+      console.error(`❌ [${requestId}] Insert Error Details:`, {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint
+      })
       return NextResponse.json(
-        { error: 'Failed to store prediction' },
+        { 
+          error: 'Failed to store prediction',
+          details: insertError.message,
+          code: insertError.code
+        },
         { status: 500 }
       )
     }
@@ -178,8 +247,9 @@ export async function POST(request) {
       success: true,
       prediction: {
         id: storedPrediction[0].id,
+        yield: yield_prediction,
         yield_prediction,
-        risk_score,
+        risk_score: risk_score / 100, // Convert to decimal for consistency
         crop: cropData.name,
         region: regionData.name,
         timestamp: storedPrediction[0].created_at
@@ -187,7 +257,7 @@ export async function POST(request) {
       metadata: {
         requestId,
         responseTime: `${responseTime}ms`,
-        model: onnxError ? 'Fallback ML' : 'ONNX Backend',
+        model: usedFallback ? 'Fallback ML' : 'ONNX Backend',
         features_used: Object.keys(features).length
       }
     })
@@ -240,7 +310,22 @@ export async function GET(request) {
       query = query.eq('crop_id', cropId)
     }
 
-    const { data: predictions, error } = await query
+    let predictions, error
+    
+    try {
+      const result = await query
+      predictions = result.data
+      error = result.error
+    } catch (dbError) {
+      console.warn(`⚠️ [${requestId}] Database not available, returning empty predictions:`, dbError.message)
+      const responseTime = Date.now() - startTime
+      return NextResponse.json([], {
+        headers: {
+          'X-Database-Status': 'unavailable',
+          'X-Response-Time': `${responseTime}ms`
+        }
+      })
+    }
 
     if (error) {
       console.error(`❌ [${requestId}] Database query failed:`, error)
