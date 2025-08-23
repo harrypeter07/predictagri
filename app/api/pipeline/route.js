@@ -16,13 +16,15 @@ export async function POST(request) {
   
   try {
     const body = await request.json()
-    const { region, phoneNumber, userId, farmerData } = body
+    const { region, phoneNumber, userId, farmerData, cropId, cropName } = body
 
     console.log(`📋 [${requestId}] Request Data:`, {
       hasRegion: !!region,
       hasPhoneNumber: !!phoneNumber,
       hasUserId: !!userId,
       hasFarmerData: !!farmerData,
+      hasCropId: !!cropId,
+      hasCropName: !!cropName,
       farmerDataKeys: farmerData ? Object.keys(farmerData) : []
     })
 
@@ -31,7 +33,9 @@ export async function POST(request) {
       region: { required: false, type: 'string' },
       phoneNumber: { required: false, type: 'string' },
       userId: { required: false, type: 'string' },
-      farmerData: { required: false, type: 'object' }
+      farmerData: { required: false, type: 'object' },
+      cropId: { required: false, type: 'string' },
+      cropName: { required: false, type: 'string' }
     })
     if (!securityResult.isValid) {
       console.warn(`⚠️ [${requestId}] Security validation failed:`, securityResult.errors)
@@ -57,12 +61,27 @@ export async function POST(request) {
     if (farmerData) {
       console.log(`👨‍🌾 [${requestId}] Running Enhanced Farmer Pipeline for farmer:`, farmerData.farmerId)
       
-      // Enhanced pipeline with caching
+      // Enhance farmer data with crop information
+      const enhancedFarmerData = {
+        ...farmerData,
+        selectedCrop: cropName || farmerData.crops?.[0] || 'Wheat',
+        cropId: cropId || null,
+        analysisType: 'crop_specific'
+      }
+      
+      console.log(`🌾 [${requestId}] Enhanced farmer data with crop:`, {
+        selectedCrop: enhancedFarmerData.selectedCrop,
+        cropId: enhancedFarmerData.cropId,
+        analysisType: enhancedFarmerData.analysisType
+      })
+      
+      // Enhanced pipeline with caching - include crop in cache key
+      const cacheKey = `farmer_analysis:${farmerData.farmerId}:${enhancedFarmerData.selectedCrop}`
       result = await cacheService.getOrSet(
-        `farmer_analysis:${farmerData.farmerId}`,
+        cacheKey,
         async () => {
-          console.log(`🔄 [${requestId}] Cache miss - executing enhanced pipeline`)
-          return await enhancedAutomatedPipeline.executeFarmerPipeline(farmerData)
+          console.log(`🔄 [${requestId}] Cache miss - executing enhanced pipeline for crop: ${enhancedFarmerData.selectedCrop}`)
+          return await enhancedAutomatedPipeline.executeFarmerPipeline(enhancedFarmerData)
         },
         5 * 60 * 1000 // 5 minutes
       )
@@ -73,29 +92,32 @@ export async function POST(request) {
         hasDataCollection: !!result.dataCollection,
         hasInsights: !!result.insights,
         hasRecommendations: !!result.recommendations,
-        hasNotification: !!result.notification
+        hasNotification: !!result.notification,
+        selectedCrop: enhancedFarmerData.selectedCrop
       })
 
       // Store results in database for farmer analysis
-      storedResult = await storeFarmerAnalysisResults(result, phoneNumber)
+      storedResult = await storeFarmerAnalysisResults(result, phoneNumber, enhancedFarmerData.selectedCrop)
       
       // Enhanced pipeline already sends notifications, so use the result from the pipeline
       notificationResult = result.notification || { success: false, method: 'None' }
       
       console.log(`💾 [${requestId}] Farmer analysis results stored:`, {
         stored: !!storedResult,
-        notification: notificationResult
+        notification: notificationResult,
+        crop: enhancedFarmerData.selectedCrop
       })
 
     } else {
       console.log(`🌍 [${requestId}] Running Standard Pipeline for region:`, region)
       
-      // Standard pipeline with caching
+      // Standard pipeline with caching - include crop in cache key
+      const cacheKey = `pipeline:${region}:${cropName || 'general'}`
       result = await cacheService.getOrSet(
-        `pipeline:${region}`,
+        cacheKey,
         async () => {
-          console.log(`🔄 [${requestId}] Cache miss - executing standard pipeline`)
-          return await automatedPipeline.executePipeline(region)
+          console.log(`🔄 [${requestId}] Cache miss - executing standard pipeline for region: ${region}, crop: ${cropName || 'general'}`)
+          return await automatedPipeline.executePipeline(region, cropName)
         },
         10 * 60 * 1000 // 10 minutes
       )
@@ -105,7 +127,8 @@ export async function POST(request) {
         hasDataCollection: !!result.dataCollection,
         hasInsights: !!result.insights,
         hasPredictions: !!result.predictions,
-        hasAlerts: !!result.alerts
+        hasAlerts: !!result.alerts,
+        crop: cropName || 'general'
       })
 
       // Transform enhanced pipeline result to match pipeline structure
@@ -114,6 +137,11 @@ export async function POST(request) {
           success: true,
           pipelineId: result.pipelineId,
           timestamp: result.timestamp,
+          cropAnalysis: {
+            cropId: cropId,
+            cropName: cropName || 'General',
+            cropSpecificInsights: result.cropSpecificInsights || []
+          },
           dataCollection: {
             weather: result.dataCollection?.weather || result.weather,
             environmental: result.dataCollection?.environmental || result.environmental,
@@ -125,19 +153,20 @@ export async function POST(request) {
         }
       }
 
-             // Store results in database
-       console.log(`💾 [${requestId}] Attempting to store pipeline results...`)
-       storedResult = await storePipelineResults(result, region)
-       console.log(`💾 [${requestId}] Storage result:`, storedResult)
-       
-       // Send notification to farmer (use default phone for standard pipeline)
-       const defaultPhone = '+919322909257' // Default phone number for standard pipeline
-       notificationResult = await sendFarmerNotification(result, defaultPhone)
-       
-       console.log(`💾 [${requestId}] Standard pipeline results stored:`, {
-         stored: !!storedResult,
-         notification: notificationResult
-       })
+      // Store results in database
+      console.log(`💾 [${requestId}] Attempting to store pipeline results...`)
+      storedResult = await storePipelineResults(result, region, cropName)
+      console.log(`💾 [${requestId}] Storage result:`, storedResult)
+      
+      // Send notification to farmer (use default phone for standard pipeline)
+      const defaultPhone = '+919322909257' // Default phone number for standard pipeline
+      notificationResult = await sendFarmerNotification(result, defaultPhone)
+      
+      console.log(`💾 [${requestId}] Standard pipeline results stored:`, {
+        stored: !!storedResult,
+        notification: notificationResult,
+        crop: cropName || 'general'
+      })
     }
 
     const responseTime = Date.now() - startTime
@@ -150,7 +179,12 @@ export async function POST(request) {
         responseTime: `${responseTime}ms`,
         cached: result.cached || false,
         stored: !!storedResult,
-        notification: notificationResult
+        notification: notificationResult,
+        cropAnalysis: {
+          cropId: cropId,
+          cropName: cropName || 'General',
+          analysisType: farmerData ? 'farmer_specific' : 'regional'
+        }
       }
     })
 
@@ -171,15 +205,16 @@ export async function POST(request) {
 }
 
 // Database and notification helper functions
-async function storePipelineResults(pipelineResult, region) {
+async function storePipelineResults(pipelineResult, region, cropName) {
   try {
-    console.log('🔍 storePipelineResults called with:', { region, pipelineId: pipelineResult.pipelineId })
+    console.log('🔍 storePipelineResults called with:', { region, pipelineId: pipelineResult.pipelineId, cropName })
     
     const { data: record, error } = await databaseService.withRetry(async () => {
              const insertData = {
          region_id: region === 'current' ? 'unknown' : (region || 'unknown'), // Fix UUID issue
          pipeline_id: pipelineResult.pipelineId || `pipeline_${Date.now()}`,
          analysis_type: 'standard_pipeline',
+         crop_id: cropName === 'General' ? null : cropName, // Store crop_id if cropName is provided
         insights: pipelineResult.insights || [],
         predictions: pipelineResult.predictions || [],
         data_collection: {
@@ -214,12 +249,13 @@ async function storePipelineResults(pipelineResult, region) {
   }
 }
 
-async function storeFarmerAnalysisResults(pipelineResult, phoneNumber) {
+async function storeFarmerAnalysisResults(pipelineResult, phoneNumber, cropName) {
   try {
     console.log('🔍 storeFarmerAnalysisResults called with:', { 
       farmerId: pipelineResult.farmerId, 
       phoneNumber: phoneNumber || 'default',
-      pipelineId: pipelineResult.pipelineId 
+      pipelineId: pipelineResult.pipelineId,
+      cropName: cropName
     })
     
     const { data: record, error } = await databaseService.withRetry(async () => {
@@ -227,7 +263,7 @@ async function storeFarmerAnalysisResults(pipelineResult, phoneNumber) {
         farmer_id: pipelineResult.farmerId || 'pipeline_analysis',
         phone_number: phoneNumber || '+919322909257', // Default phone number if none provided
         region_id: null, // Will be set if region mapping is available
-        crop_id: null, // Will be set if crop mapping is available
+        crop_id: cropName === 'General' ? null : cropName, // Store crop_id if cropName is provided
         analysis_type: 'enhanced_pipeline',
         pipeline_id: pipelineResult.pipelineId,
         insights: pipelineResult.insights,

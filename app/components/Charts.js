@@ -31,13 +31,19 @@ ChartJS.register(
 )
 
 // Line Chart for Yield Trends Over Time
-export const YieldTrendChart = ({ data }) => {
+export const YieldTrendChart = ({ predictions }) => {
+  // Process real data from database
+  const processedData = predictions && Array.isArray(predictions) && predictions.length > 0 ? predictions : []
+  
+  // Sort data by creation date for proper trend visualization
+  const sortedData = processedData.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  
   const chartData = {
-    labels: data?.map(d => new Date(d.created_at).toLocaleDateString()) || [],
+    labels: sortedData.map(d => new Date(d.created_at).toLocaleDateString()) || [],
     datasets: [
       {
         label: 'Yield Prediction',
-        data: data?.map(d => d.yield) || [],
+        data: sortedData.map(d => d.yield) || [],
         borderColor: 'rgb(34, 197, 94)',
         backgroundColor: 'rgba(34, 197, 94, 0.1)',
         fill: true,
@@ -48,8 +54,8 @@ export const YieldTrendChart = ({ data }) => {
         pointRadius: 6
       },
       {
-        label: 'Risk Score',
-        data: data?.map(d => d.risk_score * 100) || [],
+        label: 'Risk Score (%)',
+        data: sortedData.map(d => (d.risk_score * 100).toFixed(1)) || [],
         borderColor: 'rgb(239, 68, 68)',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: false,
@@ -71,9 +77,340 @@ export const YieldTrendChart = ({ data }) => {
       },
       title: {
         display: true,
-        text: 'Crop Yield Trends & Risk Analysis',
+        text: processedData.length > 0 ? 'Crop Yield Trends & Risk Analysis' : 'No Yield Data Available',
         color: '#ffffff',
         font: { size: 16, weight: 'bold' }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9ca3af' },
+        grid: { color: '#374151' }
+      },
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Yield (units)',
+          color: '#9ca3af'
+        },
+        ticks: { color: '#9ca3af' },
+        grid: { color: '#374151' }
+      },
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: {
+          display: true,
+          text: 'Risk Score (%)',
+          color: '#9ca3af'
+        },
+        ticks: { color: '#9ca3af' },
+        grid: { display: false }
+      }
+    }
+  }
+
+  if (processedData.length === 0) {
+    return (
+      <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+        <h3 className="text-xl font-semibold text-white mb-4">📈 Yield Trends</h3>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No yield data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions to see yield trends</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+      <Line data={chartData} options={options} />
+    </div>
+  )
+}
+
+// Bar Chart for Regional Performance
+export const RegionalPerformanceChart = ({ regions, predictions }) => {
+  // Process real data from database
+  const processedRegions = regions && Array.isArray(regions) && regions.length > 0 ? regions : []
+  const processedPredictions = predictions && Array.isArray(predictions) && predictions.length > 0 ? predictions : []
+  
+  const regionData = processedRegions.map(region => {
+    const regionPredictions = processedPredictions.filter(p => p.region_id === region.id) || []
+    const avgYield = regionPredictions.length > 0 
+      ? regionPredictions.reduce((sum, p) => sum + (p.yield || 0), 0) / regionPredictions.length 
+      : 0
+    const avgRisk = regionPredictions.length > 0
+      ? regionPredictions.reduce((sum, p) => sum + (p.risk_score || 0), 0) / regionPredictions.length
+      : 0
+    return {
+      name: region.name,
+      avgYield: avgYield,
+      avgRisk: avgRisk,
+      predictionCount: regionPredictions.length
+    }
+  }).filter(region => region.predictionCount > 0) || []
+
+  const chartData = {
+    labels: regionData.map(r => r.name),
+    datasets: [
+      {
+        label: 'Average Yield (units)',
+        data: regionData.map(r => r.avgYield),
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgb(59, 130, 246)',
+        borderWidth: 2,
+        borderRadius: 4
+      },
+      {
+        label: 'Average Risk Score (%)',
+        data: regionData.map(r => (r.avgRisk * 100).toFixed(1)),
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: 'rgb(239, 68, 68)',
+        borderWidth: 2,
+        borderRadius: 4
+      }
+    ]
+  }
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: { color: '#ffffff' }
+      },
+      title: {
+        display: true,
+        text: processedPredictions.length > 0 ? 'Regional Performance Analysis' : 'No Regional Data Available',
+        color: '#ffffff',
+        font: { size: 16, weight: 'bold' }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#9ca3af' },
+        grid: { color: '#374151' }
+      },
+      y: {
+        ticks: { color: '#9ca3af' },
+        grid: { color: '#374151' }
+      }
+    }
+  }
+
+  if (processedPredictions.length === 0) {
+    return (
+      <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+        <h3 className="text-xl font-semibold text-white mb-4">🌍 Regional Performance</h3>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No regional performance data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions to see regional analysis</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+      <Bar data={chartData} options={options} />
+    </div>
+  )
+}
+
+// Doughnut Chart for Crop Distribution
+export const CropDistributionChart = ({ crops, predictions }) => {
+  // Process real data from database
+  const processedCrops = crops && Array.isArray(crops) && crops.length > 0 ? crops : []
+  const processedPredictions = predictions && Array.isArray(predictions) && predictions.length > 0 ? predictions : []
+  
+  const cropData = processedCrops.map(crop => {
+    const cropPredictions = processedPredictions.filter(p => p.crop_id === crop.id) || []
+    return {
+      name: crop.name,
+      count: cropPredictions.length,
+      avgYield: cropPredictions.length > 0 
+        ? cropPredictions.reduce((sum, p) => sum + (p.yield || 0), 0) / cropPredictions.length 
+        : 0,
+      avgRisk: cropPredictions.length > 0
+        ? cropPredictions.reduce((sum, p) => sum + (p.risk_score || 0), 0) / cropPredictions.length
+        : 0
+    }
+  }).filter(crop => crop.count > 0) || []
+
+  const chartData = {
+    labels: cropData.map(c => c.name),
+    datasets: [
+      {
+        data: cropData.map(c => c.count),
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+          'rgba(255, 159, 64, 0.8)',
+          'rgba(199, 199, 199, 0.8)',
+          'rgba(83, 102, 255, 0.8)'
+        ],
+        borderColor: [
+          'rgba(255, 99, 132, 1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 159, 64, 1)',
+          'rgba(199, 199, 199, 1)',
+          'rgba(83, 102, 255, 1)'
+        ],
+        borderWidth: 2
+      }
+    ]
+  }
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { color: '#ffffff' }
+      },
+      title: {
+        display: true,
+        text: processedPredictions.length > 0 ? 'Crop Distribution Analysis' : 'No Crop Data Available',
+        color: '#ffffff',
+        font: { size: 16, weight: 'bold' }
+      }
+    }
+  }
+
+  if (processedPredictions.length === 0) {
+    return (
+      <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+        <h3 className="text-xl font-semibold text-white mb-4">🌾 Crop Distribution</h3>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No crop distribution data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions to see crop analysis</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+      <Doughnut data={chartData} options={options} />
+    </div>
+  )
+}
+
+// Enhanced Prediction Trends Chart
+export const PredictionTrendsChart = ({ predictions, crops, regions }) => {
+  const processedPredictions = predictions && Array.isArray(predictions) && predictions.length > 0 ? predictions : []
+  const processedCrops = crops && Array.isArray(crops) && crops.length > 0 ? crops : []
+  const processedRegions = regions && Array.isArray(regions) && regions.length > 0 ? regions : []
+  
+  if (processedPredictions.length === 0) {
+    return (
+      <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
+        <h3 className="text-xl font-semibold text-white mb-4">📊 Prediction Trends</h3>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No prediction data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions to see trends</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Sort predictions by date
+  const sortedPredictions = processedPredictions.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+  
+  // Group by crop for trend analysis
+  const cropTrends = processedCrops.map(crop => {
+    const cropPredictions = sortedPredictions.filter(p => p.crop_id === crop.id)
+    return {
+      name: crop.name,
+      predictions: cropPredictions,
+      avgYield: cropPredictions.length > 0 
+        ? cropPredictions.reduce((sum, p) => sum + (p.yield || 0), 0) / cropPredictions.length 
+        : 0,
+      avgRisk: cropPredictions.length > 0
+        ? cropPredictions.reduce((sum, p) => sum + (p.risk_score || 0), 0) / cropPredictions.length
+        : 0
+    }
+  }).filter(crop => crop.predictions.length > 0)
+
+  const chartData = {
+    labels: sortedPredictions.map(p => new Date(p.created_at).toLocaleDateString()),
+    datasets: [
+      {
+        label: 'Yield Predictions',
+        data: sortedPredictions.map(p => p.yield),
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgb(34, 197, 94)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      },
+      {
+        label: 'Risk Scores (%)',
+        data: sortedPredictions.map(p => (p.risk_score * 100).toFixed(1)),
+        borderColor: 'rgb(239, 68, 68)',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        fill: false,
+        tension: 0.4,
+        yAxisID: 'y1'
+      }
+    ]
+  }
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: '#ffffff',
+          font: { size: 12 }
+        }
+      },
+      title: {
+        display: true,
+        text: 'Prediction Trends Over Time',
+        color: '#ffffff',
+        font: { size: 16, weight: 'bold' }
+      },
+      tooltip: {
+        callbacks: {
+          afterBody: function(context) {
+            const index = context[0].dataIndex
+            const prediction = sortedPredictions[index]
+            if (prediction) {
+              const crop = processedCrops.find(c => c.id === prediction.crop_id)
+              const region = processedRegions.find(r => r.id === prediction.region_id)
+              return [
+                `Crop: ${crop?.name || 'Unknown'}`,
+                `Region: ${region?.name || 'Unknown'}`,
+                `Date: ${new Date(prediction.created_at).toLocaleString()}`
+              ]
+            }
+            return []
+          }
+        }
       }
     },
     scales: {
@@ -115,141 +452,10 @@ export const YieldTrendChart = ({ data }) => {
   )
 }
 
-// Bar Chart for Regional Performance
-export const RegionalPerformanceChart = ({ regions, predictions }) => {
-  const regionData = regions?.map(region => {
-    const regionPredictions = predictions?.filter(p => p.region_id === region.id) || []
-    const avgYield = regionPredictions.length > 0 
-      ? regionPredictions.reduce((sum, p) => sum + p.yield, 0) / regionPredictions.length 
-      : 0
-    return {
-      name: region.name,
-      avgYield: avgYield,
-      predictionCount: regionPredictions.length
-    }
-  }) || []
-
-  const chartData = {
-    labels: regionData.map(r => r.name),
-    datasets: [
-      {
-        label: 'Average Yield (units)',
-        data: regionData.map(r => r.avgYield),
-        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-        borderColor: 'rgb(59, 130, 246)',
-        borderWidth: 2,
-        borderRadius: 4
-      },
-      {
-        label: 'Number of Predictions',
-        data: regionData.map(r => r.predictionCount),
-        backgroundColor: 'rgba(147, 51, 234, 0.8)',
-        borderColor: 'rgb(147, 51, 234)',
-        borderWidth: 2,
-        borderRadius: 4
-      }
-    ]
-  }
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: { color: '#ffffff' }
-      },
-      title: {
-        display: true,
-        text: 'Regional Performance Analysis',
-        color: '#ffffff',
-        font: { size: 16, weight: 'bold' }
-      }
-    },
-    scales: {
-      x: {
-        ticks: { color: '#9ca3af' },
-        grid: { color: '#374151' }
-      },
-      y: {
-        ticks: { color: '#9ca3af' },
-        grid: { color: '#374151' }
-      }
-    }
-  }
-
-  return (
-    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-      <Bar data={chartData} options={options} />
-    </div>
-  )
-}
-
-// Doughnut Chart for Crop Distribution
-export const CropDistributionChart = ({ crops, predictions }) => {
-  const cropData = crops?.map(crop => {
-    const cropPredictions = predictions?.filter(p => p.crop_id === crop.id) || []
-    return {
-      name: crop.name,
-      count: cropPredictions.length,
-      avgYield: cropPredictions.length > 0 
-        ? cropPredictions.reduce((sum, p) => sum + p.yield, 0) / cropPredictions.length 
-        : 0
-    }
-  }).filter(crop => crop.count > 0) || []
-
-  const chartData = {
-    labels: cropData.map(c => c.name),
-    datasets: [
-      {
-        data: cropData.map(c => c.count),
-        backgroundColor: [
-          'rgba(59, 130, 246, 0.8)',
-          'rgba(34, 197, 94, 0.8)',
-          'rgba(239, 68, 68, 0.8)',
-          'rgba(245, 158, 11, 0.8)',
-          'rgba(147, 51, 234, 0.8)',
-          'rgba(236, 72, 153, 0.8)'
-        ],
-        borderColor: [
-          'rgb(59, 130, 246)',
-          'rgb(34, 197, 94)',
-          'rgb(239, 68, 68)',
-          'rgb(245, 158, 11)',
-          'rgb(147, 51, 234)',
-          'rgb(236, 72, 153)'
-        ],
-        borderWidth: 2
-      }
-    ]
-  }
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'right',
-        labels: { color: '#ffffff' }
-      },
-      title: {
-        display: true,
-        text: 'Crop Distribution & Predictions',
-        color: '#ffffff',
-        font: { size: 16, weight: 'bold' }
-      }
-    }
-  }
-
-  return (
-    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-      <Doughnut data={chartData} options={options} />
-    </div>
-  )
-}
-
 // NEW: Soil Health Analysis Chart
 export const SoilHealthChart = ({ pipelineData }) => {
   const processSoilData = (data) => {
-    if (!data || !Array.isArray(data)) return null
+    if (!data || !Array.isArray(data) || data.length === 0) return null
     
     const soilMetrics = data.map(item => {
       const features = item.features || {}
@@ -263,18 +469,47 @@ export const SoilHealthChart = ({ pipelineData }) => {
       }
     })
 
+    // Calculate averages
+    const avgMetrics = {
+      nitrogen: soilMetrics.reduce((sum, m) => sum + m.nitrogen, 0) / soilMetrics.length,
+      phosphorus: soilMetrics.reduce((sum, m) => sum + m.phosphorus, 0) / soilMetrics.length,
+      potassium: soilMetrics.reduce((sum, m) => sum + m.potassium, 0) / soilMetrics.length,
+      ph: soilMetrics.reduce((sum, m) => sum + m.ph, 0) / soilMetrics.length,
+      moisture: soilMetrics.reduce((sum, m) => sum + m.moisture, 0) / soilMetrics.length * 100,
+      temperature: soilMetrics.reduce((sum, m) => sum + m.temperature, 0) / soilMetrics.length
+    }
+
+    // Calculate optimal ranges based on actual data patterns
+    const maxValues = {
+      nitrogen: Math.max(...soilMetrics.map(m => m.nitrogen)),
+      phosphorus: Math.max(...soilMetrics.map(m => m.phosphorus)),
+      potassium: Math.max(...soilMetrics.map(m => m.potassium)),
+      ph: Math.max(...soilMetrics.map(m => m.ph)),
+      moisture: Math.max(...soilMetrics.map(m => m.moisture)),
+      temperature: Math.max(...soilMetrics.map(m => m.temperature))
+    }
+    
+    const minValues = {
+      nitrogen: Math.min(...soilMetrics.map(m => m.nitrogen)),
+      phosphorus: Math.min(...soilMetrics.map(m => m.phosphorus)),
+      potassium: Math.min(...soilMetrics.map(m => m.potassium)),
+      ph: Math.min(...soilMetrics.map(m => m.ph)),
+      moisture: Math.min(...soilMetrics.map(m => m.moisture)),
+      temperature: Math.min(...soilMetrics.map(m => m.temperature))
+    }
+
     return {
-      labels: ['Nitrogen', 'Phosphorus', 'Potassium', 'pH', 'Moisture', 'Temperature'],
+      labels: ['Nitrogen', 'Phosphorus', 'Potassium', 'pH', 'Moisture (%)', 'Temperature (°C)'],
       datasets: [
         {
           label: 'Current Levels',
           data: [
-            soilMetrics.reduce((sum, m) => sum + m.nitrogen, 0) / soilMetrics.length,
-            soilMetrics.reduce((sum, m) => sum + m.phosphorus, 0) / soilMetrics.length,
-            soilMetrics.reduce((sum, m) => sum + m.potassium, 0) / soilMetrics.length,
-            soilMetrics.reduce((sum, m) => sum + m.ph, 0) / soilMetrics.length,
-            soilMetrics.reduce((sum, m) => sum + m.moisture, 0) / soilMetrics.length * 100,
-            soilMetrics.reduce((sum, m) => sum + m.temperature, 0) / soilMetrics.length
+            avgMetrics.nitrogen,
+            avgMetrics.phosphorus,
+            avgMetrics.potassium,
+            avgMetrics.ph,
+            avgMetrics.moisture,
+            avgMetrics.temperature
           ],
           backgroundColor: 'rgba(34, 197, 94, 0.2)',
           borderColor: 'rgb(34, 197, 94)',
@@ -285,8 +520,15 @@ export const SoilHealthChart = ({ pipelineData }) => {
           pointRadius: 6
         },
         {
-          label: 'Optimal Range',
-          data: [40, 30, 25, 6.5, 60, 25], // Optimal values
+          label: 'Data Range (Min-Max)',
+          data: [
+            (minValues.nitrogen + maxValues.nitrogen) / 2,
+            (minValues.phosphorus + maxValues.phosphorus) / 2,
+            (minValues.potassium + maxValues.potassium) / 2,
+            (minValues.ph + maxValues.ph) / 2,
+            (minValues.moisture + maxValues.moisture) / 2,
+            (minValues.temperature + maxValues.temperature) / 2
+          ],
           backgroundColor: 'rgba(59, 130, 246, 0.2)',
           borderColor: 'rgb(59, 130, 246)',
           borderWidth: 2,
@@ -305,7 +547,12 @@ export const SoilHealthChart = ({ pipelineData }) => {
     return (
       <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
         <h3 className="text-xl font-semibold text-white mb-4">🌱 Soil Health Analysis</h3>
-        <p className="text-gray-400 text-center">No soil data available</p>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No soil data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions or run pipeline to see soil analysis</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -344,7 +591,7 @@ export const SoilHealthChart = ({ pipelineData }) => {
 // NEW: Weather Impact Analysis Chart
 export const WeatherImpactChart = ({ pipelineData }) => {
   const processWeatherData = (data) => {
-    if (!data || !Array.isArray(data)) return null
+    if (!data || !Array.isArray(data) || data.length === 0) return null
     
     const weatherMetrics = data.map(item => {
       const features = item.features || {}
@@ -389,8 +636,13 @@ export const WeatherImpactChart = ({ pipelineData }) => {
   if (!chartData) {
     return (
       <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
-        <h3 className="text-xl font-semibold text-white mb-4">🌦️ Weather Impact Analysis</h3>
-        <p className="text-gray-400 text-center">No weather data available</p>
+        <h3 className="text-xl font-semibold text-white mb-4">🌤️ Weather Impact Analysis</h3>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No weather impact data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions or run pipeline to see weather analysis</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -404,13 +656,15 @@ export const WeatherImpactChart = ({ pipelineData }) => {
       },
       title: {
         display: true,
-        text: 'Weather Impact on Yield & Risk',
+        text: 'Weather Impact Analysis',
         color: '#ffffff',
         font: { size: 16, weight: 'bold' }
       }
     },
     scales: {
       x: {
+        type: 'linear',
+        position: 'bottom',
         title: {
           display: true,
           text: 'Temperature (°C) / Humidity (%)',
@@ -422,7 +676,7 @@ export const WeatherImpactChart = ({ pipelineData }) => {
       y: {
         title: {
           display: true,
-          text: 'Yield (units) / Risk (%)',
+          text: 'Yield / Risk Score',
           color: '#9ca3af'
         },
         ticks: { color: '#9ca3af' },
@@ -441,7 +695,7 @@ export const WeatherImpactChart = ({ pipelineData }) => {
 // NEW: Crop Performance Comparison Chart
 export const CropPerformanceChart = ({ pipelineData, crops }) => {
   const processCropData = (data) => {
-    if (!data || !Array.isArray(data) || !crops) return null
+    if (!data || !Array.isArray(data) || data.length === 0 || !crops || !Array.isArray(crops)) return null
     
     const cropPerformance = crops.map(crop => {
       const cropData = data.filter(item => item.crop_id === crop.id)
@@ -459,6 +713,8 @@ export const CropPerformanceChart = ({ pipelineData, crops }) => {
         count: cropData.length
       }
     }).filter(Boolean)
+
+    if (cropPerformance.length === 0) return null
 
     return {
       labels: cropPerformance.map(c => c.name),
@@ -491,7 +747,12 @@ export const CropPerformanceChart = ({ pipelineData, crops }) => {
     return (
       <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
         <h3 className="text-xl font-semibold text-white mb-4">🌾 Crop Performance Comparison</h3>
-        <p className="text-gray-400 text-center">No crop data available</p>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No crop performance data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions or run pipeline to see crop comparison</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -552,7 +813,7 @@ export const CropPerformanceChart = ({ pipelineData, crops }) => {
 // NEW: Seasonal Analysis Chart
 export const SeasonalAnalysisChart = ({ pipelineData, crops }) => {
   const processSeasonalData = (data) => {
-    if (!data || !Array.isArray(data) || !crops) return null
+    if (!data || !Array.isArray(data) || data.length === 0 || !crops || !Array.isArray(crops)) return null
     
     const seasonalData = {}
     
@@ -571,6 +832,7 @@ export const SeasonalAnalysisChart = ({ pipelineData, crops }) => {
     })
 
     const seasons = Object.keys(seasonalData)
+    if (seasons.length === 0) return null
     
     return {
       labels: seasons,
@@ -615,7 +877,12 @@ export const SeasonalAnalysisChart = ({ pipelineData, crops }) => {
     return (
       <div className="bg-gray-900 p-6 rounded-lg border border-gray-700">
         <h3 className="text-xl font-semibold text-white mb-4">📅 Seasonal Analysis</h3>
-        <p className="text-gray-400 text-center">No seasonal data available</p>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-gray-400 mb-2">No seasonal data available</p>
+            <p className="text-gray-500 text-sm">Generate predictions or run pipeline to see seasonal analysis</p>
+          </div>
+        </div>
       </div>
     )
   }
