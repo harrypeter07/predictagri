@@ -20,12 +20,27 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [notification, setNotification] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
 
   // Fetch data on component mount
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Auto-hide notifications after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type, timestamp: Date.now() })
+  }
 
   const fetchData = async () => {
     try {
@@ -79,11 +94,54 @@ export default function Home() {
       // Import location service dynamically (client-side only)
       const { locationService } = await import('../lib/locationService')
       
-      // Get user's current location
-      const userLocation = await locationService.getLocationWithFallback()
+      // Get user's current location with better error handling
+      let userLocation
+      try {
+        userLocation = await locationService.getLocationWithFallback()
+        console.log('📍 Location obtained:', userLocation)
+        
+        // Show notification if using fallback location
+        if (userLocation.source === 'default') {
+          showNotification('⚠️ Using default location - location services unavailable', 'warning')
+        } else if (userLocation.source !== 'gps') {
+          showNotification(`📍 Location obtained via ${userLocation.source}`, 'info')
+        }
+      } catch (locationError) {
+        console.warn('⚠️ Location service failed, using default location:', locationError.message)
+        // Use a default location if all location methods fail
+        userLocation = {
+          lat: 20.5937, // Center of India
+          lon: 78.9629,
+          city: 'Default Location',
+          region: 'India',
+          country: 'India',
+          source: 'default',
+          note: 'Using default location due to location service failure'
+        }
+        showNotification('⚠️ Location services unavailable - using default location', 'warning')
+      }
       
       // Get real-time weather data for the user's location
-      const weatherData = await locationService.getCurrentLocationWeather()
+      let weatherData
+      try {
+        weatherData = await locationService.getCurrentLocationWeather()
+      } catch (weatherError) {
+        console.warn('⚠️ Weather service failed, using default weather:', weatherError.message)
+        // Use default weather data if weather service fails
+        weatherData = {
+          weather: {
+            current: {
+              temperature_2m: 25,
+              relative_humidity_2m: 65,
+              wind_speed_10m: 5
+            },
+            daily: {
+              precipitation_sum: [0]
+            }
+          }
+        }
+        showNotification('⚠️ Weather service unavailable - using default data', 'warning')
+      }
       
       // Create prediction data based on real location and weather
       const realTimeData = {
@@ -183,6 +241,26 @@ export default function Home() {
             {error && (
               <div className="mb-4 p-3 bg-red-900 border border-red-700 text-red-200 rounded">
                 {error}
+              </div>
+            )}
+
+            {notification && (
+              <div className={`mb-4 p-3 border rounded ${
+                notification.type === 'warning' 
+                  ? 'bg-yellow-900 border-yellow-700 text-yellow-200' 
+                  : notification.type === 'error'
+                  ? 'bg-red-900 border-red-700 text-red-200'
+                  : 'bg-blue-900 border-blue-700 text-blue-200'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <span>{notification.message}</span>
+                  <button 
+                    onClick={() => setNotification(null)}
+                    className="text-sm opacity-70 hover:opacity-100"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
             )}
 

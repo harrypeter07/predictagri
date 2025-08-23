@@ -87,8 +87,8 @@ export default function RealTimeAnalytics({ predictions, regions, crops, weather
     return 'text-red-400'
   }
 
-  const getYieldColor = (yield) => {
-    const yieldNum = parseFloat(yield)
+  const getYieldColor = (yieldValue) => {
+    const yieldNum = parseFloat(yieldValue)
     if (yieldNum > 0.7) return 'text-green-400'
     if (yieldNum > 0.4) return 'text-yellow-400'
     return 'text-red-400'
