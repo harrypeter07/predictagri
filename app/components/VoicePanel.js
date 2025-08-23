@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { locationService } from '../../lib/locationService'
+import LocationService from '../../lib/locationService'
 import { marathiTTSService } from '../../lib/marathiTTSService'
 
 export default function VoicePanel() {
@@ -26,6 +26,8 @@ export default function VoicePanel() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechVolume, setSpeechVolume] = useState(0)
 
+  // Create instance of LocationService
+  const locationService = new LocationService()
   
   const recognitionRef = useRef(null)
   const synthRef = useRef(null)
@@ -838,10 +840,13 @@ export default function VoicePanel() {
 
   const getUserLocation = async () => {
     try {
-      const location = await locationService.getLocationWithFallback()
+      const location = await locationService.getCurrentLocation()
       setUserLocation(location)
     } catch (error) {
       console.error('Failed to get user location:', error)
+      // Fallback to default location
+      const defaultLocation = locationService.getDefaultLocation()
+      setUserLocation(defaultLocation)
     }
   }
 
@@ -1050,11 +1055,13 @@ export default function VoicePanel() {
       let locationContext = {}
       if (userLocation) {
         try {
-          const weatherData = await locationService.getCurrentLocationWeather()
+          // Get agricultural region info instead of weather
+          const regionInfo = locationService.getAgriculturalRegion(userLocation.lat, userLocation.lon)
           locationContext = {
             location: userLocation,
-            weather: weatherData.weather,
-            address: await locationService.getAddressFromCoordinates(userLocation.lat, userLocation.lon)
+            region: regionInfo,
+            // For address, we'll use a simple format since getAddressFromCoordinates doesn't exist
+            address: `${userLocation.lat}, ${userLocation.lon}`
           }
         } catch (error) {
           console.error('Failed to get location context:', error)

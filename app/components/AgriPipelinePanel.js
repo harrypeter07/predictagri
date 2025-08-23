@@ -1,18 +1,87 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function AgriPipelinePanel({ region = 'kansas' }) {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [pipelineMode, setPipelineMode] = useState('standard') // 'standard' or 'farmer'
+  const [currentLocation, setCurrentLocation] = useState(null)
+  const [locationLoading, setLocationLoading] = useState(true)
 
   const [farmerData, setFarmerData] = useState({
     farmerId: '',
     coordinates: { lat: 21.1458, lon: 79.0882 },
     address: 'Nagpur, Maharashtra'
   })
+
+  // Get current device location on component mount
+  useEffect(() => {
+    getCurrentLocation()
+  }, [])
+
+  const getCurrentLocation = async () => {
+    try {
+      setLocationLoading(true)
+      
+      // First try browser geolocation
+      if (navigator.geolocation) {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+          })
+        })
+        
+        const location = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          source: 'browser_geolocation',
+          timestamp: new Date().toISOString()
+        }
+        
+        setCurrentLocation(location)
+        
+        // Update farmer data with current location
+        setFarmerData(prev => ({
+          ...prev,
+          coordinates: { lat: location.lat, lon: location.lon },
+          address: `Current Location (${location.lat.toFixed(4)}, ${location.lon.toFixed(4)})`
+        }))
+        
+        console.log('📍 Current device location obtained:', location)
+      } else {
+        throw new Error('Geolocation not supported')
+      }
+    } catch (error) {
+      console.warn('Failed to get current location:', error)
+      
+      // Fallback to IP-based location
+      try {
+        const response = await fetch('/api/location/current')
+        const data = await response.json()
+        
+        if (data.success && data.location) {
+          setCurrentLocation(data.location)
+          setFarmerData(prev => ({
+            ...prev,
+            coordinates: { lat: data.location.lat, lon: data.location.lon },
+            address: data.location.address || `IP Location (${data.location.lat.toFixed(4)}, ${data.location.lon.toFixed(4)})`
+          }))
+          console.log('📍 IP-based location obtained:', data.location)
+        } else {
+          console.warn('Using fallback location (Nagpur)')
+        }
+      } catch (fallbackError) {
+        console.warn('All location methods failed, using fallback:', fallbackError)
+      }
+    } finally {
+      setLocationLoading(false)
+    }
+  }
 
   const runPipeline = async () => {
     try {
@@ -82,6 +151,14 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
         <h3 className="text-xl font-semibold text-white">🚀 Automated Agri Pipeline</h3>
         <div className="flex space-x-2">
           <button
+            onClick={getCurrentLocation}
+            disabled={locationLoading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white px-3 py-2 rounded text-sm"
+            title="Refresh current location"
+          >
+            {locationLoading ? '📍 Loading...' : '📍 Refresh Location'}
+          </button>
+          <button
             onClick={runStatusCheck}
             disabled={loading}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm"
@@ -95,6 +172,35 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
           >
             {loading ? 'Running...' : 'Run Now'}
           </button>
+        </div>
+      </div>
+
+      {/* Location Status Display */}
+      <div className="mb-6 p-4 bg-gray-800 rounded-lg border border-gray-600">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-medium text-gray-300 mb-1">📍 Current Location</h4>
+            {locationLoading ? (
+              <p className="text-gray-400 text-sm">Loading location...</p>
+            ) : currentLocation ? (
+              <div className="text-sm">
+                <p className="text-green-400">
+                  {currentLocation.address || `${currentLocation.lat.toFixed(4)}, ${currentLocation.lon.toFixed(4)}`}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Source: {currentLocation.source} • Accuracy: {currentLocation.accuracy ? `${Math.round(currentLocation.accuracy)}m` : 'Unknown'}
+                </p>
+              </div>
+            ) : (
+              <p className="text-yellow-400 text-sm">Using fallback location (Nagpur)</p>
+            )}
+          </div>
+          {currentLocation && (
+            <div className="text-xs text-gray-400">
+              <p>Lat: {currentLocation.lat.toFixed(6)}</p>
+              <p>Lon: {currentLocation.lon.toFixed(6)}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -124,44 +230,75 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
         </div>
 
         {pipelineMode === 'farmer' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Farmer ID</label>
-              <input
-                type="text"
-                value={farmerData.farmerId}
-                onChange={(e) => setFarmerData(prev => ({ ...prev, farmerId: e.target.value }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter Farmer ID"
-              />
+          <div className="space-y-4">
+            {/* Current Location Notice */}
+            {currentLocation && (
+              <div className="bg-green-900/20 border border-green-600/30 rounded-lg p-3">
+                <p className="text-green-400 text-sm">
+                  ✅ Using current device location for analysis. 
+                  {currentLocation.source === 'browser_geolocation' && ' (GPS-based)'}
+                  {currentLocation.source === 'ip_geolocation' && ' (IP-based)'}
+                </p>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Farmer ID</label>
+                <input
+                  type="text"
+                  value={farmerData.farmerId}
+                  onChange={(e) => setFarmerData(prev => ({ ...prev, farmerId: e.target.value }))}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter Farmer ID"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Latitude 
+                  {currentLocation && (
+                    <span className="text-green-400 ml-1">(Current: {currentLocation.lat.toFixed(6)})</span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={farmerData.coordinates.lat}
+                  onChange={(e) => setFarmerData(prev => ({ 
+                    ...prev, 
+                    coordinates: { ...prev.coordinates, lat: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="21.1458"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Longitude
+                  {currentLocation && (
+                    <span className="text-green-400 ml-1">(Current: {currentLocation.lon.toFixed(6)})</span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={farmerData.coordinates.lon}
+                  onChange={(e) => setFarmerData(prev => ({ 
+                    ...prev, 
+                    coordinates: { ...prev.coordinates, lon: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="79.0882"
+                />
+              </div>
             </div>
+            
+            {/* Address Display */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Latitude</label>
-              <input
-                type="number"
-                step="any"
-                value={farmerData.coordinates.lat}
-                onChange={(e) => setFarmerData(prev => ({ 
-                  ...prev, 
-                  coordinates: { ...prev.coordinates, lat: e.target.value }
-                }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="21.1458"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Longitude</label>
-              <input
-                type="number"
-                step="any"
-                value={farmerData.coordinates.lon}
-                onChange={(e) => setFarmerData(prev => ({ 
-                  ...prev, 
-                  coordinates: { ...prev.coordinates, lon: e.target.value }
-                }))}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="79.0882"
-              />
+              <label className="block text-sm font-medium text-gray-300 mb-2">Address</label>
+              <div className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white">
+                {farmerData.address}
+              </div>
             </div>
           </div>
         )}
