@@ -349,100 +349,252 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                       </p>
                     </div>
                     <div>
-                      <p><span className="text-gray-400">Precipitation:</span> 
+                      <p><span className="text-gray-400">Today&apos;s Precipitation:</span> 
                         <span className="text-white ml-2">
                           {result.dataCollection.weather.forecast?.daily?.precipitation_sum?.[0] || 'N/A'} mm
                         </span>
                       </p>
-                      <p><span className="text-gray-400">Max Temp:</span> 
+                      <p><span className="text-gray-400">Today&apos;s Max Temp:</span> 
                         <span className="text-white ml-2">
                           {result.dataCollection.weather.forecast?.daily?.temperature_2m_max?.[0] || 'N/A'}°C
                         </span>
                       </p>
-                      <p><span className="text-gray-400">Min Temp:</span> 
+                      <p><span className="text-gray-400">Today&apos;s Min Temp:</span> 
                         <span className="text-white ml-2">
                           {result.dataCollection.weather.forecast?.daily?.temperature_2m_min?.[0] || 'N/A'}°C
                         </span>
                       </p>
                     </div>
                     <div>
-                      <p><span className="text-gray-400">Agricultural Impact:</span> 
-                        <span className="text-white ml-2">
+                      <p><span className="text-gray-400">Irrigation Needs:</span> 
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          result.dataCollection.weather.agriculturalImpact?.irrigation === 'Not needed' ? 'bg-green-600 text-white' :
+                          result.dataCollection.weather.agriculturalImpact?.irrigation === 'May be needed' ? 'bg-yellow-600 text-white' :
+                          'bg-red-600 text-white'
+                        }`}>
                           {result.dataCollection.weather.agriculturalImpact?.irrigation || 'N/A'}
                         </span>
                       </p>
                       <p><span className="text-gray-400">Pest Risk:</span> 
-                        <span className="text-white ml-2">
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          result.dataCollection.weather.agriculturalImpact?.pestRisk === 'Low' ? 'bg-green-600 text-white' :
+                          result.dataCollection.weather.agriculturalImpact?.pestRisk === 'Moderate' ? 'bg-yellow-600 text-white' :
+                          'bg-red-600 text-white'
+                        }`}>
                           {result.dataCollection.weather.agriculturalImpact?.pestRisk || 'N/A'}
                         </span>
                       </p>
                       <p><span className="text-gray-400">Crop Stress:</span> 
-                        <span className="text-white ml-2">
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          result.dataCollection.weather.agriculturalImpact?.cropStress === 'Low' ? 'bg-green-600 text-white' :
+                          result.dataCollection.weather.agriculturalImpact?.cropStress === 'Moderate' ? 'bg-yellow-600 text-white' :
+                          'bg-red-600 text-white'
+                        }`}>
                           {result.dataCollection.weather.agriculturalImpact?.cropStress || 'N/A'}
                         </span>
                       </p>
                     </div>
                   </div>
+
+                  {/* 7-Day Weather Forecast */}
+                  {result.dataCollection.weather.forecast?.daily && (
+                    <div className="mt-4">
+                      <h5 className="text-white font-medium mb-2">📅 7-Day Weather Forecast</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                        {result.dataCollection.weather.forecast.daily.time?.slice(0, 7).map((date, index) => (
+                          <div key={index} className="bg-gray-700 rounded p-2 text-center">
+                            <p className="text-gray-400 text-xs">{new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-white text-sm font-medium">
+                              {result.dataCollection.weather.forecast.daily.temperature_2m_max?.[index] || 'N/A'}°
+                            </p>
+                            <p className="text-gray-300 text-xs">
+                              {result.dataCollection.weather.forecast.daily.temperature_2m_min?.[index] || 'N/A'}°
+                            </p>
+                            <p className="text-blue-400 text-xs">
+                              {result.dataCollection.weather.forecast.daily.precipitation_sum?.[index] || 0}mm
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Environmental Data */}
               {result.dataCollection?.environmental && (
                 <div className="bg-gray-800 rounded-lg p-4">
-                  <h4 className="font-medium text-white mb-3">🌱 Environmental Data</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p><span className="text-gray-400">NDVI Index:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.satellite?.ndvi || 'N/A'}
-                        </span>
-                      </p>
-                      <p><span className="text-gray-400">Soil Type:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.soil?.type || 'N/A'}
-                        </span>
-                      </p>
-                      <p><span className="text-gray-400">Land Use:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.landUse?.type || 'N/A'}
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p><span className="text-gray-400">Soil pH:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.soil?.ph || 'N/A'}
-                        </span>
-                      </p>
-                      <p><span className="text-gray-400">Organic Matter:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.soil?.organicMatter || 'N/A'}%
-                        </span>
-                      </p>
-                      <p><span className="text-gray-400">Soil Moisture:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.soil?.moisture || 'N/A'}%
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p><span className="text-gray-400">Coverage:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.satellite?.coverage || 'N/A'}
-                        </span>
-                      </p>
-                      <p><span className="text-gray-400">Resolution:</span> 
-                        <span className="text-white ml-2">
-                          {result.dataCollection.environmental.satellite?.resolution || 'N/A'}
-                        </span>
-                      </p>
-                      <p><span className="text-gray-400">Source:</span> 
-                        <span className="text-white ml-2">
+                  <h4 className="font-medium text-white mb-3">🌱 Environmental & Soil Analysis</h4>
+                  
+                  {/* Satellite Data */}
+                  <div className="mb-4">
+                    <h5 className="text-white font-medium mb-2">🛰️ Satellite Analysis</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p><span className="text-gray-400">NDVI Index:</span></p>
+                        <div className="flex items-center mt-1">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            (result.dataCollection.environmental.satellite?.ndvi || 0) > 0.6 ? 'bg-green-600 text-white' :
+                            (result.dataCollection.environmental.satellite?.ndvi || 0) > 0.3 ? 'bg-yellow-600 text-white' :
+                            'bg-red-600 text-white'
+                          }`}>
+                            {result.dataCollection.environmental.satellite?.ndvi?.toFixed(3) || 'N/A'}
+                          </span>
+                          <span className="text-gray-300 ml-2 text-xs">
+                            {(result.dataCollection.environmental.satellite?.ndvi || 0) > 0.6 ? 'Healthy Vegetation' :
+                             (result.dataCollection.environmental.satellite?.ndvi || 0) > 0.3 ? 'Moderate Vegetation' :
+                             'Poor Vegetation'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p><span className="text-gray-400">Land Surface Temp:</span></p>
+                        <p className="text-white text-sm">
+                          {result.dataCollection.environmental.satellite?.landSurfaceTemperature?.toFixed(1) || 'N/A'}°C
+                        </p>
+                      </div>
+                      <div>
+                        <p><span className="text-gray-400">Dominant Land Use:</span></p>
+                        <p className="text-white text-sm">
+                          {result.dataCollection.environmental.satellite?.landUse?.dominantCover || 
+                           result.dataCollection.environmental.landUse?.dominantCover || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <p><span className="text-gray-400">Data Source:</span></p>
+                        <p className="text-gray-300 text-xs">
                           {result.dataCollection.environmental.satellite?.source || 'Google Earth Engine'}
-                        </span>
-                      </p>
+                        </p>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Soil Analysis */}
+                  <div className="mb-4">
+                    <h5 className="text-white font-medium mb-2">🌾 Soil Analysis</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p><span className="text-gray-400">Soil pH:</span></p>
+                        <div className="flex items-center mt-1">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            (result.dataCollection.environmental.soil?.soilPh?.value || 
+                             result.dataCollection.environmental.satellite?.soil?.soilPh?.value || 0) >= 6.0 && 
+                            (result.dataCollection.environmental.soil?.soilPh?.value || 
+                             result.dataCollection.environmental.satellite?.soil?.soilPh?.value || 0) <= 7.5 ? 'bg-green-600 text-white' :
+                            'bg-yellow-600 text-white'
+                          }`}>
+                            {result.dataCollection.environmental.soil?.soilPh?.value || 
+                             result.dataCollection.environmental.satellite?.soil?.soilPh?.value || 'N/A'}
+                          </span>
+                          <span className="text-gray-300 ml-2 text-xs">
+                            {result.dataCollection.environmental.soil?.soilPh?.interpretation || 
+                             result.dataCollection.environmental.satellite?.soil?.soilPh?.interpretation || 'Unknown'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p><span className="text-gray-400">Soil Moisture:</span></p>
+                        <div className="flex items-center mt-1">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            (result.dataCollection.environmental.soil?.soilMoisture?.value || 
+                             result.dataCollection.environmental.satellite?.soil?.soilMoisture?.value || 0) >= 0.3 ? 'bg-green-600 text-white' :
+                            (result.dataCollection.environmental.soil?.soilMoisture?.value || 
+                             result.dataCollection.environmental.satellite?.soil?.soilMoisture?.value || 0) >= 0.2 ? 'bg-yellow-600 text-white' :
+                            'bg-red-600 text-white'
+                          }`}>
+                            {((result.dataCollection.environmental.soil?.soilMoisture?.value || 
+                               result.dataCollection.environmental.satellite?.soil?.soilMoisture?.value || 0) * 100).toFixed(1)}%
+                          </span>
+                          <span className="text-gray-300 ml-2 text-xs">
+                            {result.dataCollection.environmental.soil?.soilMoisture?.interpretation || 
+                             result.dataCollection.environmental.satellite?.soil?.soilMoisture?.interpretation || 'Unknown'}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p><span className="text-gray-400">Soil Temperature:</span></p>
+                        <p className="text-white text-sm">
+                          {result.dataCollection.environmental.soil?.soilTemperature?.value || 
+                           result.dataCollection.environmental.satellite?.soil?.soilTemperature?.value || 'N/A'}°C
+                        </p>
+                      </div>
+                      <div>
+                        <p><span className="text-gray-400">Organic Carbon:</span></p>
+                        <p className="text-white text-sm">
+                          {result.dataCollection.environmental.soil?.soilOrganicCarbon?.value || 
+                           result.dataCollection.environmental.satellite?.soil?.soilOrganicCarbon?.value || 'N/A'} g/kg
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Soil Texture Composition */}
+                  {(result.dataCollection.environmental.soil?.soilTexture || 
+                    result.dataCollection.environmental.satellite?.soil?.soilTexture) && (
+                    <div className="mb-4">
+                      <h5 className="text-white font-medium mb-2">🏔️ Soil Texture Composition</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-gray-700 rounded p-3">
+                          <div className="grid grid-cols-3 gap-3 text-sm">
+                            <div className="text-center">
+                              <p className="text-gray-400 text-xs">Clay</p>
+                              <p className="text-white font-medium">
+                                {result.dataCollection.environmental.soil?.soilTexture?.clay?.value || 
+                                 result.dataCollection.environmental.satellite?.soil?.soilTexture?.clay?.value || 'N/A'}%
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-gray-400 text-xs">Silt</p>
+                              <p className="text-white font-medium">
+                                {result.dataCollection.environmental.soil?.soilTexture?.silt?.value || 
+                                 result.dataCollection.environmental.satellite?.soil?.soilTexture?.silt?.value || 'N/A'}%
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-gray-400 text-xs">Sand</p>
+                              <p className="text-white font-medium">
+                                {result.dataCollection.environmental.soil?.soilTexture?.sand?.value || 
+                                 result.dataCollection.environmental.satellite?.soil?.soilTexture?.sand?.value || 'N/A'}%
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="bg-gray-700 rounded p-3">
+                          <p><span className="text-gray-400">Soil Type:</span> 
+                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                              (result.dataCollection.environmental.soil?.soilTexture?.texture || 
+                               result.dataCollection.environmental.satellite?.soil?.soilTexture?.texture) === 'Loam' ? 'bg-green-600 text-white' :
+                              'bg-blue-600 text-white'
+                            }`}>
+                              {result.dataCollection.environmental.soil?.soilTexture?.texture || 
+                               result.dataCollection.environmental.satellite?.soil?.soilTexture?.texture || 'N/A'}
+                            </span>
+                          </p>
+                          <p className="text-gray-300 text-xs mt-2">
+                            {result.dataCollection.environmental.soil?.soilTexture?.interpretation || 
+                             result.dataCollection.environmental.satellite?.soil?.soilTexture?.interpretation || 'Unknown'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Land Use Distribution */}
+                  {(result.dataCollection.environmental.landUse?.landCoverTypes || 
+                    result.dataCollection.environmental.satellite?.landUse?.landCoverTypes) && (
+                    <div>
+                      <h5 className="text-white font-medium mb-2">🗺️ Land Use Distribution</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {(result.dataCollection.environmental.landUse?.landCoverTypes || 
+                          result.dataCollection.environmental.satellite?.landUse?.landCoverTypes || []).map((landType, index) => (
+                          <div key={index} className="bg-gray-700 rounded p-2 text-center">
+                            <p className="text-gray-400 text-xs">{landType.type}</p>
+                            <p className="text-white text-sm font-medium">{landType.percentage}%</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -478,44 +630,191 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
               {/* Agricultural Insights */}
               {result.insights && (
                 <div className="bg-gray-800 rounded-lg p-4">
-                  <h4 className="font-medium text-white mb-3">🌱 Agricultural Insights</h4>
-                  <div className="space-y-3">
-                    {result.insights.map((insight, index) => (
-                      <div key={index} className="bg-gray-700 rounded p-3">
-                        <h5 className="text-white font-medium mb-2">{insight.type || `Insight ${index + 1}`}</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p><span className="text-gray-400">Overall Score:</span> 
-                              <span className={`ml-2 px-2 py-1 rounded text-xs ${getHealthColor(insight.data?.overall)}`}>
-                                {insight.data?.overall || 'Unknown'}
+                  <h4 className="font-medium text-white mb-3">🌱 Agricultural Insights & Analysis</h4>
+                  <div className="space-y-4">
+                    {result.insights.map((insight, index) => {
+                      const insightType = insight.type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                      
+                      return (
+                        <div key={index} className="bg-gray-700 rounded p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="text-white font-medium">
+                              {insightType === 'Soil Health' ? '🌾' :
+                               insightType === 'Crop Suitability' ? '🌱' :
+                               insightType === 'Water Management' ? '💧' :
+                               insightType === 'Pest Risk' ? '🐛' :
+                               insightType === 'Yield Potential' ? '📈' :
+                               insightType === 'Climate Adaptation' ? '🌡️' :
+                               '📊'} {insightType || `Analysis ${index + 1}`}
+                            </h5>
+                            {insight.data?.overall && (
+                              <span className={`px-3 py-1 rounded text-sm font-medium ${getHealthColor(insight.data.overall)}`}>
+                                {insight.data.overall}
+                                {insight.data?.score && ` (${insight.data.score}/100)`}
                               </span>
-                            </p>
-                            {insight.data?.factors && (
-                              <div>
-                                <p className="text-gray-400 mb-1">Factors:</p>
-                                <ul className="ml-4 text-gray-300">
-                                  {insight.data.factors.map((factor, idx) => (
-                                    <li key={idx} className="text-xs">• {factor}</li>
-                                  ))}
-                                </ul>
-                              </div>
                             )}
                           </div>
-                          <div>
-                            {insight.data?.recommendations && (
-                              <div>
-                                <p className="text-gray-400 mb-1">Recommendations:</p>
-                                <ul className="ml-4 text-gray-300">
-                                  {insight.data.recommendations.map((rec, idx) => (
-                                    <li key={idx} className="text-xs">• {rec}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              {/* Specific data based on insight type */}
+                              {insight.type === 'soil_health' && (
+                                <div>
+                                  <p className="text-gray-400 mb-2">Soil Conditions:</p>
+                                  {insight.data?.strengths && (
+                                    <div className="mb-2">
+                                      <p className="text-green-400 text-xs mb-1">✅ Strengths:</p>
+                                      <ul className="ml-4 text-gray-300">
+                                        {insight.data.strengths.map((strength, idx) => (
+                                          <li key={idx} className="text-xs">• {strength}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {insight.data?.issues && insight.data.issues.length > 0 && (
+                                    <div>
+                                      <p className="text-red-400 text-xs mb-1">⚠️ Issues:</p>
+                                      <ul className="ml-4 text-gray-300">
+                                        {insight.data.issues.map((issue, idx) => (
+                                          <li key={idx} className="text-xs">• {issue}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {insight.type === 'crop_suitability' && (
+                                <div>
+                                  <p className="text-gray-400 mb-2">Crop Recommendations:</p>
+                                  {insight.data?.bestCrops && (
+                                    <div className="mb-2">
+                                      <p className="text-green-400 text-xs mb-1">🌟 Best Crops:</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {insight.data.bestCrops.map((crop, idx) => (
+                                          <span key={idx} className="px-2 py-1 bg-green-600 text-white text-xs rounded">
+                                            {crop}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {insight.data?.goodCrops && (
+                                    <div>
+                                      <p className="text-blue-400 text-xs mb-1">✅ Good Crops:</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {insight.data.goodCrops.map((crop, idx) => (
+                                          <span key={idx} className="px-2 py-1 bg-blue-600 text-white text-xs rounded">
+                                            {crop}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {insight.type === 'water_management' && (
+                                <div>
+                                  <p className="text-gray-400 mb-2">Water Requirements:</p>
+                                  <div className="space-y-2">
+                                    {insight.data?.irrigationNeeds && (
+                                      <p><span className="text-gray-400">Irrigation:</span> 
+                                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                          insight.data.irrigationNeeds === 'Low' ? 'bg-green-600 text-white' :
+                                          insight.data.irrigationNeeds === 'Moderate' ? 'bg-yellow-600 text-white' :
+                                          'bg-red-600 text-white'
+                                        }`}>
+                                          {insight.data.irrigationNeeds}
+                                        </span>
+                                      </p>
+                                    )}
+                                    {insight.data?.drainageNeeds && (
+                                      <p><span className="text-gray-400">Drainage:</span> 
+                                        <span className="text-white ml-2">{insight.data.drainageNeeds}</span>
+                                      </p>
+                                    )}
+                                    {insight.data?.floodRisk && (
+                                      <p><span className="text-gray-400">Flood Risk:</span> 
+                                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                          insight.data.floodRisk === 'Low' ? 'bg-green-600 text-white' :
+                                          insight.data.floodRisk === 'Moderate' ? 'bg-yellow-600 text-white' :
+                                          'bg-red-600 text-white'
+                                        }`}>
+                                          {insight.data.floodRisk}
+                                        </span>
+                                      </p>
+                                    )}
+                                    {insight.data?.droughtRisk && (
+                                      <p><span className="text-gray-400">Drought Risk:</span> 
+                                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                          insight.data.droughtRisk === 'Low' ? 'bg-green-600 text-white' :
+                                          insight.data.droughtRisk === 'Moderate' ? 'bg-yellow-600 text-white' :
+                                          'bg-red-600 text-white'
+                                        }`}>
+                                          {insight.data.droughtRisk}
+                                        </span>
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Factors and other data */}
+                              {insight.data?.factors && insight.data.factors.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-gray-400 mb-1">Key Factors:</p>
+                                  <ul className="ml-4 text-gray-300">
+                                    {insight.data.factors.map((factor, idx) => (
+                                      <li key={idx} className="text-xs">• {factor}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div>
+                              {/* Reasoning and recommendations */}
+                              {insight.data?.reasoning && (
+                                <div className="mb-3">
+                                  <p className="text-gray-400 mb-1">Analysis Reasoning:</p>
+                                  <div className="space-y-1">
+                                    {Object.entries(insight.data.reasoning).map(([key, value], idx) => (
+                                      <p key={idx} className="text-xs">
+                                        <span className="text-blue-400">{key}:</span> 
+                                        <span className="text-gray-300 ml-1">{value}</span>
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {insight.data?.recommendations && insight.data.recommendations.length > 0 && (
+                                <div>
+                                  <p className="text-gray-400 mb-1">Recommendations:</p>
+                                  <ul className="ml-4 text-gray-300">
+                                    {insight.data.recommendations.map((rec, idx) => (
+                                      <li key={idx} className="text-xs">• {rec}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {insight.data?.limitations && insight.data.limitations.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-yellow-400 text-xs mb-1">⚠️ Limitations:</p>
+                                  <ul className="ml-4 text-gray-300">
+                                    {insight.data.limitations.map((limitation, idx) => (
+                                      <li key={idx} className="text-xs">• {limitation}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
