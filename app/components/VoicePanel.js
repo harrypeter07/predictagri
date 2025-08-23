@@ -35,6 +35,7 @@ export default function VoicePanel() {
   const analyserRef = useRef(null)
   const microphoneRef = useRef(null)
   const animationFrameRef = useRef(null)
+  const currentTranscriptRef = useRef('') // Store current transcript value
 
   useEffect(() => {
     // Check for speech recognition support
@@ -90,8 +91,11 @@ export default function VoicePanel() {
         if (finalTranscript) {
           setQuery(prev => prev + ' ' + finalTranscript)
           setTranscript(prev => prev + ' ' + finalTranscript)
+          // Also update the ref for reliable access in onend
+          currentTranscriptRef.current += ' ' + finalTranscript
         } else if (interimTranscript) {
           setTranscript(interimTranscript)
+          currentTranscriptRef.current = interimTranscript
         }
       }
       
@@ -100,12 +104,34 @@ export default function VoicePanel() {
          setIsListening(false)
          setIsRecording(false)
          
-         // Store the transcript before clearing it
-         const finalTranscript = transcript.trim()
+         // Get the current transcript value from the event results
+         let finalTranscript = ''
+         if (recognitionRef.current.results && recognitionRef.current.results.length > 0) {
+           for (let i = 0; i < recognitionRef.current.results.length; i++) {
+             if (recognitionRef.current.results[i].isFinal) {
+               finalTranscript += recognitionRef.current.results[i][0].transcript
+             }
+           }
+         }
+         
+         // Fallback to ref if no results available
+         if (!finalTranscript) {
+           finalTranscript = currentTranscriptRef.current.trim()
+         }
+         
+         // Final fallback to state
+         if (!finalTranscript) {
+           finalTranscript = transcript.trim()
+         }
          
          // Auto-send the transcribed text to AI immediately
          if (finalTranscript) {
-           addSpeechLog('INFO', 'Auto-sending transcribed text to AI', { transcript: finalTranscript })
+           addSpeechLog('INFO', 'Auto-sending transcribed text to AI', { 
+             transcript: finalTranscript,
+             transcriptLength: finalTranscript.length,
+             refValue: currentTranscriptRef.current,
+             stateValue: transcript
+           })
            
            // Set the query to the transcribed text
            setQuery(finalTranscript)
@@ -116,7 +142,12 @@ export default function VoicePanel() {
              ask()
            }, 500) // 500ms delay to ensure state is updated
          } else {
-           addSpeechLog('WARNING', 'No transcript to auto-send', { transcript, finalTranscript })
+           addSpeechLog('WARNING', 'No transcript to auto-send', { 
+             transcript, 
+             finalTranscript,
+             refValue: currentTranscriptRef.current,
+             stateValue: transcript
+           })
          }
          
          // Clear transcript after a longer delay to ensure auto-send works
@@ -264,13 +295,14 @@ export default function VoicePanel() {
       // Stop audio analysis
       stopAudioAnalysis()
       
-      // Reset state
-      setIsRecording(false)
-      setIsListening(false)
-      setTranscript('')
-      setResult(null)
-      setRetryCount(0)
-      setLastError(null)
+              // Reset state
+        setIsRecording(false)
+        setIsListening(false)
+        setTranscript('')
+        setResult(null)
+        setRetryCount(0)
+        setLastError(null)
+        currentTranscriptRef.current = '' // Reset the ref as well
       
       // Reinitialize speech recognition
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -321,8 +353,11 @@ export default function VoicePanel() {
           if (finalTranscript) {
             setQuery(prev => prev + ' ' + finalTranscript)
             setTranscript(prev => prev + ' ' + finalTranscript)
+            // Also update the ref for reliable access in onend
+            currentTranscriptRef.current += ' ' + finalTranscript
           } else if (interimTranscript) {
             setTranscript(interimTranscript)
+            currentTranscriptRef.current = interimTranscript
           }
         }
         
@@ -334,12 +369,34 @@ export default function VoicePanel() {
            // Stop audio analysis
            stopAudioAnalysis()
            
-           // Store the transcript before clearing it
-           const finalTranscript = transcript.trim()
+           // Get the current transcript value from the event results
+           let finalTranscript = ''
+           if (recognitionRef.current.results && recognitionRef.current.results.length > 0) {
+             for (let i = 0; i < recognitionRef.current.results.length; i++) {
+               if (recognitionRef.current.results[i].isFinal) {
+                 finalTranscript += recognitionRef.current.results[i][0].transcript
+               }
+             }
+           }
+           
+           // Fallback to ref if no results available
+           if (!finalTranscript) {
+             finalTranscript = currentTranscriptRef.current.trim()
+           }
+           
+           // Final fallback to state
+           if (!finalTranscript) {
+             finalTranscript = transcript.trim()
+           }
            
            // Auto-send the transcribed text to AI immediately
            if (finalTranscript) {
-             addSpeechLog('INFO', 'Auto-sending transcribed text to AI', { transcript: finalTranscript })
+             addSpeechLog('INFO', 'Auto-sending transcribed text to AI', { 
+               transcript: finalTranscript,
+               transcriptLength: finalTranscript.length,
+               refValue: currentTranscriptRef.current,
+               stateValue: transcript
+             })
              
              // Set the query to the transcribed text
              setQuery(finalTranscript)
@@ -350,7 +407,12 @@ export default function VoicePanel() {
                ask()
              }, 500) // 500ms delay to ensure state is updated
            } else {
-             addSpeechLog('WARNING', 'No transcript to auto-send (reloaded)', { transcript, finalTranscript })
+             addSpeechLog('WARNING', 'No transcript to auto-send (reloaded)', { 
+               transcript, 
+               finalTranscript,
+               refValue: currentTranscriptRef.current,
+               stateValue: transcript
+             })
            }
            
            // Clear transcript after a longer delay to ensure auto-send works
@@ -843,6 +905,7 @@ export default function VoicePanel() {
         setResult(null)
         setQuery('')
         setRetryCount(0)
+        currentTranscriptRef.current = '' // Reset the ref as well
         
         // Configure language
         recognitionRef.current.lang = getLanguageCode(language)
@@ -873,8 +936,11 @@ export default function VoicePanel() {
 
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop()
-      console.log('⏹️ Stopping speech recognition...')
+      // Add a small delay to ensure final transcript is captured
+      setTimeout(() => {
+        recognitionRef.current.stop()
+        console.log('⏹️ Stopping speech recognition...')
+      }, 100)
     }
     
     // Stop audio analysis
@@ -946,12 +1012,20 @@ export default function VoicePanel() {
     setResult(null)
     setTranscript('')
     setQuery('')
+    currentTranscriptRef.current = '' // Reset the ref as well
   }
 
   const ask = async () => {
+    // Prioritize transcript over query for voice input
     const inputText = transcript.trim() || query.trim()
     
-    console.log('🤖 Ask function called with:', { transcript: transcript.trim(), query: query.trim(), inputText })
+    console.log('🤖 Ask function called with:', { 
+      transcript: transcript.trim(), 
+      query: query.trim(), 
+      inputText,
+      transcriptLength: transcript.length,
+      queryLength: query.length
+    })
     
     if (!inputText) {
       setResult({ success: false, error: 'Please enter a question or use voice input' })
@@ -1626,6 +1700,9 @@ export default function VoicePanel() {
           <div className="text-white font-medium">{transcript}</div>
           <div className="text-green-300 text-xs mt-1">
             Your voice input is being automatically sent to the AI assistant
+          </div>
+          <div className="text-green-400 text-xs mt-2">
+            <strong>Debug Info:</strong> Transcript length: {transcript.length} | Ref value: {currentTranscriptRef.current.length}
           </div>
         </div>
       )}
