@@ -38,7 +38,7 @@ export default function PredictionsPage() {
 
   useEffect(() => {
     console.log('🤖 useEffect called - initializing component')
-    fetchData()
+    // fetchData() // Removed automatic data fetching
     // Get user location on component mount
     const getUserLocation = async () => {
       try {
@@ -326,46 +326,24 @@ export default function PredictionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Page Header */}
-        <div className="text-center">
-          <div className="mb-6">
+    <div className="min-h-screen bg-black text-white">
+      <Navigation />
+      
+      <div className="py-8 px-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-12">
             <HeroLogo />
+            <div className="mt-6">
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg text-lg font-semibold transition-colors"
+              >
+                {loading ? 'Loading...' : 'Load Predictions Data'}
+              </button>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-4">🌾 Agricultural Predictions & Analytics</h1>
-          <p className="text-gray-300 text-lg">Comprehensive analysis of crop performance, weather patterns, and farming recommendations</p>
-          
-          {/* Current Location Display */}
-          <div className="mt-4 p-3 bg-gray-800 rounded-lg inline-block">
-            <p className="text-sm text-gray-300">
-              📍 Location: {userLocation ? `${userLocation.city || 'Unknown'}, ${userLocation.region || 'Unknown'}` : 'Detecting...'}
-            </p>
-            {userLocation && (
-              <p className="text-xs text-gray-400 mt-1">
-                Coordinates: {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} 
-                <span className="ml-2">({userLocation.source})</span>
-              </p>
-            )}
-          </div>
-          
-                     {/* Debug Info */}
-           <div className="mt-2 p-2 bg-gray-700 rounded text-xs">
-             <p>Debug: AI Calls: {aiModelCalls.length} | Predictions: {predictions.length}</p>
-             <p>AI Calls State: {JSON.stringify(aiModelCalls.map(call => ({ 
-               endpoint: call.endpoint, 
-               status: call.status, 
-               timestamp: call.timestamp 
-             })))}</p>
-             <p>Component State: Loading={loading.toString()} | Error={error || 'none'}</p>
-             <button 
-               onClick={addTestAiCall}
-               className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
-             >
-               Test AI Call Display
-             </button>
-           </div>
-        </div>
 
         {/* AI Model Endpoint Calls */}
         {console.log('🤖 Rendering AI calls section, count:', aiModelCalls.length, 'calls:', aiModelCalls)}

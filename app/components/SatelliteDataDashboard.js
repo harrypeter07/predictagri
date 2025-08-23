@@ -10,9 +10,10 @@ const SatelliteDataDashboard = ({ region, farmerData }) => {
   const [selectedImageType, setSelectedImageType] = useState('all')
 
   useEffect(() => {
-    if (region || farmerData) {
-      fetchSatelliteData()
-    }
+    // Only fetch data when explicitly requested, not automatically
+    // if (region || farmerData) {
+    //   fetchSatelliteData()
+    // }
   }, [region, farmerData])
 
   const fetchSatelliteData = async () => {
@@ -302,12 +303,16 @@ const SatelliteDataDashboard = ({ region, farmerData }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-green-600 rounded-lg p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">🌍 Satellite Data Dashboard</h2>
-        <p className="opacity-90">
-          Real-time satellite imagery and vegetation analysis from Google Earth Engine
-        </p>
+    <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-semibold text-white">🛰️ Satellite Data Dashboard</h3>
+        <button
+          onClick={fetchSatelliteData}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm"
+        >
+          {loading ? 'Loading...' : 'Fetch Data'}
+        </button>
       </div>
 
       {/* NDVI Card */}

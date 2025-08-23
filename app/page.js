@@ -22,11 +22,12 @@ export default function Home() {
   const [error, setError] = useState(null)
   const [notification, setNotification] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [currentTime, setCurrentTime] = useState('')
 
   // Fetch data on component mount
-  useEffect(() => {
-    fetchData()
-  }, [])
+  // useEffect(() => {
+  //   fetchData()
+  // }, [])
 
   // Auto-hide notifications after 5 seconds
   useEffect(() => {
@@ -37,6 +38,16 @@ export default function Home() {
       return () => clearTimeout(timer)
     }
   }, [notification])
+
+  // Update current time on client side only
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleString())
+    }
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const showNotification = (message, type = 'info') => {
     setNotification({ message, type, timestamp: Date.now() })
@@ -511,6 +522,15 @@ export default function Home() {
           <div className="text-center mb-12">
             <HeroLogo />
             <FeatureBadges />
+            <div className="mt-6">
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg text-lg font-semibold transition-colors"
+              >
+                {loading ? 'Loading...' : 'Load Dashboard Data'}
+              </button>
+            </div>
           </div>
 
           {/* Tab Navigation */}
