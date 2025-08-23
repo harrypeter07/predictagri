@@ -176,7 +176,6 @@ export default function Home() {
                 <h3 className="font-semibold text-green-200 mb-2">✅ Test Prediction Generated!</h3>
                 <div className="space-y-1 text-sm text-green-300">
                   <p><strong>Yield:</strong> {result.yield?.toFixed(2)} units</p>
-                  <p><strong>Risk Score:</strong> {(result.risk_score * 100).toFixed(1)}%</p>
                   <p><strong>Created:</strong> {new Date(result.created_at).toLocaleString()}</p>
                 </div>
               </div>

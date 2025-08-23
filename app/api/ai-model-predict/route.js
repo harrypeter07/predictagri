@@ -58,16 +58,12 @@ export async function POST(request) {
     
         // If prediction is always 1 (100%), use Gemini to generate realistic predictions
     if (validatedPrediction >= 0.99) {
-      console.warn('⚠️ Prediction is always 100%, using Gemini to generate realistic prediction')
-      
       try {
         // Initialize Gemini expert service
         const geminiExpert = new AgriExpertGemini()
         
         // Generate realistic prediction using Gemini
         const geminiPrediction = await geminiExpert.generateRealisticPrediction(backendRequestData)
-        
-        console.log('🧠 Gemini generated prediction:', geminiPrediction)
         
         // Use Gemini's prediction instead of the backend's 100% prediction
         validatedPrediction = geminiPrediction.yield_prediction
@@ -76,10 +72,7 @@ export async function POST(request) {
         if (geminiPrediction.risk_score) {
           backendRequestData.risk_score = geminiPrediction.risk_score
         }
-        
-        console.log('✅ Using Gemini prediction:', validatedPrediction)
       } catch (geminiError) {
-        console.error('❌ Gemini prediction failed, using fallback algorithm:', geminiError)
         
         // Fallback to simple algorithm if Gemini fails
         let baseYield = 0.6 // Base 60% yield
@@ -105,7 +98,6 @@ export async function POST(request) {
         baseYield -= (backendRequestData.risk_score * 0.3)
         
         validatedPrediction = Math.max(0.1, Math.min(0.95, baseYield))
-        console.log('🔧 Fallback algorithm prediction:', validatedPrediction)
       }
     }
     
@@ -162,7 +154,6 @@ export async function POST(request) {
       
       return Response.json(enhancedResult)
     } catch (geminiError) {
-      console.error('❌ Enhancement failed, returning original result:', geminiError)
       
       // Log the fallback answer being returned
       console.log('🎯 FALLBACK ANSWER BEING RETURNED:')

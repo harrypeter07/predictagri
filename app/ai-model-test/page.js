@@ -508,10 +508,7 @@ export default function AIModelTestPage() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
-                    <div className={`text-2xl font-bold ${getRiskColor(prediction.risk_score)}`}>
-                      {(prediction.risk_score * 100).toFixed(1)}%
-                    </div>
-                    <p className="text-sm text-gray-400">Risk Score</p>
+                    
                   </div>
                   
                   <div className="text-center">
