@@ -6,8 +6,11 @@ export default function AIModelTestPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [prediction, setPrediction] = useState(null)
+  const [expertAnalysis, setExpertAnalysis] = useState(null)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [testHistory, setTestHistory] = useState([])
+  const [debugInfo, setDebugInfo] = useState('')
+  const [showExpertAnalysis, setShowExpertAnalysis] = useState(true)
   
   // Form state for crop yield prediction
   const [formData, setFormData] = useState({
@@ -24,8 +27,8 @@ export default function AIModelTestPage() {
       phosphorus: 35,
       potassium: 40,
       ph: 6.5,
-      fertilizer_usage: 45, // Added for backend API
-      risk_score: 0.3 // Added for backend API
+      fertilizer_usage: 45,
+      risk_score: 0.3
     }
   })
 
@@ -47,36 +50,51 @@ export default function AIModelTestPage() {
   ]
 
   useEffect(() => {
+    // Check backend health when page loads
+    checkBackendHealth()
     // Auto-fill all fields except crop
     generateRandomData(false)
-    // Set backend as healthy by default since we know it works
-    setBackendStatus('healthy')
   }, [])
 
   const checkBackendHealth = async () => {
+    setDebugInfo('Checking backend health... (this may take 10-30 seconds for cold start)')
+    setBackendStatus('checking')
+    
     try {
       console.log('🔍 Checking backend health...')
-      const response = await fetch('https://agribackend-f3ky.onrender.com/health', {
+      
+      // Add timeout for health check (30 seconds)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
+      const response = await fetch('/api/ai-model-health', {
         method: 'GET',
-        mode: 'cors',
-        headers: {
-          'Accept': 'application/json',
-        }
+        signal: controller.signal
       })
       
+      clearTimeout(timeoutId)
       console.log('📡 Health check response status:', response.status)
+      setDebugInfo(`Health check response: ${response.status}`)
       
       if (response.ok) {
         const healthData = await response.json()
         console.log('✅ Health check data:', healthData)
         setBackendStatus(healthData.model_loaded ? 'healthy' : 'unhealthy')
+        setDebugInfo(`Backend healthy: ${healthData.model_loaded ? 'Model loaded' : 'Model not loaded'}`)
       } else {
         console.error('❌ Health check failed with status:', response.status)
         setBackendStatus('unhealthy')
+        setDebugInfo(`Health check failed: ${response.status}`)
       }
     } catch (error) {
       console.error('❌ Backend health check failed:', error)
-      setBackendStatus('unhealthy')
+      if (error.name === 'AbortError') {
+        setBackendStatus('unhealthy')
+        setDebugInfo('Health check timeout: Backend took too long to respond (30s timeout)')
+      } else {
+        setBackendStatus('unhealthy')
+        setDebugInfo(`Health check error: ${error.message}`)
+      }
     }
   }
 
@@ -130,12 +148,14 @@ export default function AIModelTestPage() {
     setLoading(true)
     setError(null)
     setPrediction(null)
+    setDebugInfo('Starting yield prediction test...')
 
     const testId = `test-${Date.now()}`
     const startTime = Date.now()
 
     try {
       console.log(`🧪 [${testId}] Starting AI Model Test`)
+      setDebugInfo(`🧪 [${testId}] Starting AI Model Test`)
       
       // Map the form data to the backend API format
       const selectedCrop = sampleCrops.find(c => c.id === formData.cropId)
@@ -148,44 +168,66 @@ export default function AIModelTestPage() {
         humidity: formData.features.humidity,
         soil_ph: formData.features.ph,
         fertilizer_usage: formData.features.fertilizer_usage,
-        risk_score: formData.features.risk_score
+        risk_score: formData.features.risk_score,
+        crop: selectedCrop?.name || 'Unknown',
+        region: selectedRegion?.name || 'Unknown'
       }
 
       console.log(`📊 [${testId}] Request Data:`, requestData)
       console.log(`🌾 [${testId}] Selected Crop:`, selectedCrop?.name)
       console.log(`📍 [${testId}] Selected Region:`, selectedRegion?.name)
+      setDebugInfo(`📊 Request Data: ${JSON.stringify(requestData, null, 2)}`)
 
-      // Call the backend API directly
-      const response = await fetch('https://agribackend-f3ky.onrender.com/predict', {
+      // Call the backend API through proxy
+      setDebugInfo('Calling backend API... (this may take 10-30 seconds for cold start)')
+      
+      // Add timeout for prediction API call (45 seconds)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000)
+      
+      const response = await fetch('/api/ai-model-predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestData),
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
 
       const responseTime = Date.now() - startTime
+      setDebugInfo(`Response received in ${responseTime}ms. Status: ${response.status}`)
+      
       const result = await response.json()
+      console.log(`📥 [${testId}] Raw Response:`, result)
 
       if (!response.ok) {
-        throw new Error(result.detail || 'Prediction failed')
+        throw new Error(result.detail || `HTTP ${response.status}: Prediction failed`)
       }
 
       console.log(`✅ [${testId}] AI Model Response:`, result)
+      setDebugInfo(`✅ AI Model Response: ${JSON.stringify(result, null, 2)}`)
 
       // Extract prediction value from the response
       const predictionValue = result.prediction[0][0]
       
+      // Check if response has secret expert analysis
+      const hasExpertAnalysis = result._expertAnalysis && result._enhanced
+      
       // Create a formatted prediction result
       const formattedPrediction = {
         yield_prediction: predictionValue,
-        risk_score: 0.3, // Default risk score
+        risk_score: formData.features.risk_score,
         crop: selectedCrop?.name || 'Unknown',
         region: selectedRegion?.name || 'Unknown',
         metadata: {
-          model: 'ONNX Backend',
-          responseTime: `${responseTime}ms`
-        }
+          model: hasExpertAnalysis ? 'ONNX Backend (Enhanced)' : 'ONNX Backend',
+          responseTime: `${responseTime}ms`,
+          confidence: hasExpertAnalysis ? result._confidence : null
+        },
+        // Secretly include expert analysis if available
+        expertAnalysis: hasExpertAnalysis ? result._expertAnalysis : null
       }
 
       const testResult = {
@@ -194,21 +236,30 @@ export default function AIModelTestPage() {
         responseTime: `${responseTime}ms`,
         status: 'success',
         prediction: formattedPrediction,
+        expertAnalysis: formattedPrediction.expertAnalysis,
         metadata: {
-          model: 'ONNX Backend',
-          responseTime: `${responseTime}ms`
+          model: hasExpertAnalysis ? 'ONNX Backend (Enhanced)' : 'ONNX Backend',
+          responseTime: `${responseTime}ms`,
+          confidence: hasExpertAnalysis ? result._confidence : null
         },
         requestData: requestData
       }
 
       setPrediction(formattedPrediction)
+      setExpertAnalysis(formattedPrediction.expertAnalysis)
       setTestHistory(prev => [testResult, ...prev.slice(0, 9)]) // Keep last 10 tests
 
       console.log(`🎯 [${testId}] Yield Prediction: ${(predictionValue * 100).toFixed(1)}%`)
-      console.log(`⚠️ [${testId}] Risk Score: 30.0%`)
+      if (hasExpertAnalysis) {
+        console.log(`🧠 [${testId}] Secret Expert Analysis Available`)
+        setDebugInfo(`🎯 Yield Prediction: ${(predictionValue * 100).toFixed(1)}% | Expert Analysis: ${result._expertAnalysis.summary}`)
+      } else {
+        setDebugInfo(`🎯 Yield Prediction: ${(predictionValue * 100).toFixed(1)}%`)
+      }
 
     } catch (err) {
       console.error(`❌ [${testId}] AI Model Test Failed:`, err)
+      setDebugInfo(`❌ Error: ${err.message}`)
       
       const testResult = {
         id: testId,
@@ -242,6 +293,12 @@ export default function AIModelTestPage() {
     return 'text-red-400'
   }
 
+  const getConfidenceColor = (confidence) => {
+    if (confidence >= 0.8) return 'text-green-400'
+    if (confidence >= 0.6) return 'text-yellow-400'
+    return 'text-red-400'
+  }
+
   return (
     <div className="min-h-screen bg-black text-white py-8 px-4">
       <div className="max-w-6xl mx-auto">
@@ -250,18 +307,45 @@ export default function AIModelTestPage() {
           <h1 className="text-4xl font-bold text-white mb-2">🤖 AI Model Yield Prediction Test</h1>
           <p className="text-lg text-gray-300">Test the deployed crop yield prediction model</p>
           
-                     {/* Backend Status */}
-           <div className="mt-4 flex flex-col items-center gap-2">
-             <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-900 text-green-200 border border-green-700">
-               <span className="w-2 h-2 rounded-full mr-2 bg-green-400"></span>
-               AI Model: Ready ✅
-             </div>
-             
-             <p className="text-xs text-gray-400">
-               Backend: https://agribackend-f3ky.onrender.com
-             </p>
-           </div>
+          {/* Backend Status */}
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              backendStatus === 'healthy' 
+                ? 'bg-green-900 text-green-200 border border-green-700' 
+                : backendStatus === 'unhealthy' 
+                ? 'bg-red-900 text-red-200 border border-red-700'
+                : 'bg-yellow-900 text-yellow-200 border border-yellow-700'
+            }`}>
+              <span className={`w-2 h-2 rounded-full mr-2 ${
+                backendStatus === 'healthy' ? 'bg-green-400' 
+                : backendStatus === 'unhealthy' ? 'bg-red-400' 
+                : 'bg-yellow-400'
+              }`}></span>
+              AI Model: {backendStatus === 'healthy' ? 'Ready ✅' : backendStatus === 'unhealthy' ? 'Unavailable ❌' : 'Checking... ⏳'}
+            </div>
+            
+            <p className="text-xs text-gray-400">
+              Backend: https://agribackend-f3ky.onrender.com
+            </p>
+            
+            <button
+              onClick={checkBackendHealth}
+              className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm"
+            >
+              🔄 Retry Connection
+            </button>
+          </div>
         </header>
+
+        {/* Debug Info */}
+        {debugInfo && (
+          <div className="mb-6 bg-gray-800 border border-gray-600 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-yellow-400 mb-2">Debug Information</h3>
+            <pre className="text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto">
+              {debugInfo}
+            </pre>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Test Configuration */}
@@ -352,88 +436,48 @@ export default function AIModelTestPage() {
               </div>
             </div>
 
-                         {/* Soil Nutrients */}
-             <div className="space-y-4 mb-6">
-               <h3 className="text-lg font-medium text-green-400">Soil Nutrients (kg/ha)</h3>
-               
-               <div className="grid grid-cols-3 gap-4">
-                 <div>
-                   <label className="block text-sm font-medium text-gray-300 mb-1">Nitrogen</label>
-                   <input
-                     type="number"
-                     value={formData.features.nitrogen}
-                     onChange={(e) => handleInputChange('features.nitrogen', e.target.value)}
-                     className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     step="0.1"
-                   />
-                 </div>
-                 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-300 mb-1">Phosphorus</label>
-                   <input
-                     type="number"
-                     value={formData.features.phosphorus}
-                     onChange={(e) => handleInputChange('features.phosphorus', e.target.value)}
-                     className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     step="0.1"
-                   />
-                 </div>
-                 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-300 mb-1">Potassium</label>
-                   <input
-                     type="number"
-                     value={formData.features.potassium}
-                     onChange={(e) => handleInputChange('features.potassium', e.target.value)}
-                     className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     step="0.1"
-                   />
-                 </div>
-               </div>
-             </div>
-
-             {/* Additional Parameters */}
-             <div className="space-y-4 mb-6">
-               <h3 className="text-lg font-medium text-purple-400">Additional Parameters</h3>
-               
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <label className="block text-sm font-medium text-gray-300 mb-1">Fertilizer Usage (kg/ha)</label>
-                   <input
-                     type="number"
-                     value={formData.features.fertilizer_usage}
-                     onChange={(e) => handleInputChange('features.fertilizer_usage', e.target.value)}
-                     className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     step="0.1"
-                     min="0"
-                     max="200"
-                   />
-                 </div>
-                 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-300 mb-1">Risk Score (0-1)</label>
-                   <input
-                     type="number"
-                     value={formData.features.risk_score}
-                     onChange={(e) => handleInputChange('features.risk_score', e.target.value)}
-                     className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     step="0.1"
-                     min="0"
-                     max="1"
-                   />
-                 </div>
-               </div>
-             </div>
+            {/* Additional Parameters */}
+            <div className="space-y-4 mb-6">
+              <h3 className="text-lg font-medium text-purple-400">Additional Parameters</h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Fertilizer Usage (kg/ha)</label>
+                  <input
+                    type="number"
+                    value={formData.features.fertilizer_usage}
+                    onChange={(e) => handleInputChange('features.fertilizer_usage', e.target.value)}
+                    className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    step="0.1"
+                    min="0"
+                    max="200"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Risk Score (0-1)</label>
+                  <input
+                    type="number"
+                    value={formData.features.risk_score}
+                    onChange={(e) => handleInputChange('features.risk_score', e.target.value)}
+                    className="w-full border border-gray-600 p-2 rounded bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    step="0.1"
+                    min="0"
+                    max="1"
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-4">
-                             <button
-                 onClick={testYieldPrediction}
-                 disabled={loading}
-                 className="flex-1 px-6 py-3 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-               >
-                 {loading ? 'Testing...' : 'Test Yield Prediction'}
-               </button>
+              <button
+                onClick={testYieldPrediction}
+                disabled={loading}
+                className="flex-1 px-6 py-3 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? 'Testing...' : 'Test Yield Prediction'}
+              </button>
               
               <button
                 onClick={generateRandomData}
@@ -488,6 +532,43 @@ export default function AIModelTestPage() {
               </div>
             )}
 
+            {/* Secret Expert Analysis Display */}
+            {expertAnalysis && showExpertAnalysis && (
+              <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-semibold text-white">🧠 Advanced Analysis</h2>
+                  <button
+                    onClick={() => setShowExpertAnalysis(!showExpertAnalysis)}
+                    className="px-3 py-1 rounded bg-gray-600 hover:bg-gray-700 text-white text-sm"
+                  >
+                    {showExpertAnalysis ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className="p-3 bg-green-900 border border-green-700 rounded-lg">
+                    <p className="text-green-200 text-sm">
+                      <strong>Analysis Summary:</strong> {expertAnalysis.summary}
+                    </p>
+                  </div>
+
+                  {/* Full Analysis */}
+                  <div className="bg-gray-800 rounded-lg p-4">
+                    <pre className="text-sm text-gray-300 whitespace-pre-wrap overflow-x-auto">
+                      {expertAnalysis.expertAnalysis}
+                    </pre>
+                  </div>
+
+                  {/* Confidence and Timestamp */}
+                  <div className="flex justify-between items-center text-xs text-gray-400">
+                    <span>Analysis Confidence: {(expertAnalysis.confidence * 100).toFixed(1)}%</span>
+                    <span>Generated: {new Date(expertAnalysis.timestamp).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Error Display */}
             {error && (
               <div className="bg-red-900 border border-red-700 rounded-lg p-4">
@@ -538,6 +619,9 @@ export default function AIModelTestPage() {
                                 Risk: <span className={getRiskColor(test.prediction.risk_score)}>
                                   {(test.prediction.risk_score * 100).toFixed(1)}%
                                 </span>
+                                {test.expertAnalysis && (
+                                  <span className="text-blue-300"> | Advanced Analysis Available</span>
+                                )}
                               </span>
                             </div>
                           )}
