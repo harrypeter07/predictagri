@@ -176,10 +176,10 @@ async function storePipelineResults(pipelineResult, region) {
     console.log('🔍 storePipelineResults called with:', { region, pipelineId: pipelineResult.pipelineId })
     
     const { data: record, error } = await databaseService.withRetry(async () => {
-      const insertData = {
-        region_id: region || 'unknown',
-        pipeline_id: pipelineResult.pipelineId || `pipeline_${Date.now()}`,
-        analysis_type: 'standard_pipeline',
+             const insertData = {
+         region_id: region === 'current' ? 'unknown' : (region || 'unknown'), // Fix UUID issue
+         pipeline_id: pipelineResult.pipelineId || `pipeline_${Date.now()}`,
+         analysis_type: 'standard_pipeline',
         insights: pipelineResult.insights || [],
         predictions: pipelineResult.predictions || [],
         data_collection: {
@@ -200,13 +200,14 @@ async function storePipelineResults(pipelineResult, region) {
         .single()
     }, 'store_pipeline_results')
 
-    if (error) {
-      console.error('❌ Failed to store pipeline results:', error)
-      console.error('❌ Error details:', { message: error.message, code: error.code, details: error.details })
-      return { success: false, error: error.message }
-    }
+         if (error) {
+       console.error('❌ Failed to store pipeline results:', error)
+       console.error('❌ Error details:', { message: error.message, code: error.code, details: error.details })
+       return { success: false, error: error.message }
+     }
 
-    return { success: true, recordId: record.id }
+     console.log('✅ Pipeline results stored successfully:', { recordId: record.id })
+     return { success: true, recordId: record.id }
   } catch (error) {
     console.error('Database storage failed:', error)
     return { success: false, error: error.message }
@@ -215,38 +216,49 @@ async function storePipelineResults(pipelineResult, region) {
 
 async function storeFarmerAnalysisResults(pipelineResult, phoneNumber) {
   try {
+    console.log('🔍 storeFarmerAnalysisResults called with:', { 
+      farmerId: pipelineResult.farmerId, 
+      phoneNumber: phoneNumber || 'default',
+      pipelineId: pipelineResult.pipelineId 
+    })
+    
     const { data: record, error } = await databaseService.withRetry(async () => {
+      const insertData = {
+        farmer_id: pipelineResult.farmerId || 'pipeline_analysis',
+        phone_number: phoneNumber || '+919322909257', // Default phone number if none provided
+        region_id: null, // Will be set if region mapping is available
+        crop_id: null, // Will be set if crop mapping is available
+        analysis_type: 'enhanced_pipeline',
+        pipeline_id: pipelineResult.pipelineId,
+        insights: pipelineResult.insights,
+        predictions: pipelineResult.predictions || [],
+        data_collection: {
+          weather: pipelineResult.dataCollection?.weather,
+          environmental: pipelineResult.dataCollection?.environmental,
+          imageAnalysis: pipelineResult.dataCollection?.imageAnalysis
+        },
+        alerts: pipelineResult.alerts || [],
+        recommendations: pipelineResult.recommendations || [],
+        notification_sent: false,
+        created_at: new Date().toISOString()
+      }
+      console.log('🔍 Inserting farmer analysis data:', insertData)
+      
       return await databaseService.client
         .from('farmer_analysis_results')
-        .insert({
-          farmer_id: pipelineResult.farmerId || 'pipeline_analysis',
-          phone_number: phoneNumber,
-          region_id: null, // Will be set if region mapping is available
-          crop_id: null, // Will be set if crop mapping is available
-          analysis_type: 'enhanced_pipeline',
-          pipeline_id: pipelineResult.pipelineId,
-          insights: pipelineResult.insights,
-          predictions: pipelineResult.predictions || [],
-          data_collection: {
-            weather: pipelineResult.dataCollection?.weather,
-            environmental: pipelineResult.dataCollection?.environmental,
-            imageAnalysis: pipelineResult.dataCollection?.imageAnalysis
-          },
-          alerts: pipelineResult.alerts || [],
-          recommendations: pipelineResult.recommendations || [],
-          notification_sent: false,
-          created_at: new Date().toISOString()
-        })
+        .insert(insertData)
         .select()
         .single()
     }, 'store_farmer_analysis')
 
-    if (error) {
-      console.error('Failed to store farmer analysis results:', error)
-      return { success: false, error: error.message }
-    }
+         if (error) {
+       console.error('❌ Failed to store farmer analysis results:', error)
+       console.error('❌ Error details:', { message: error.message, code: error.code, details: error.details })
+       return { success: false, error: error.message }
+     }
 
-    return { success: true, recordId: record.id }
+     console.log('✅ Farmer analysis results stored successfully:', { recordId: record.id })
+     return { success: true, recordId: record.id }
   } catch (error) {
     console.error('Database storage failed:', error)
     return { success: false, error: error.message }

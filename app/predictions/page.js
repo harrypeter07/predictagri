@@ -52,10 +52,16 @@ export default function PredictionsPage() {
     getUserLocation()
   }, [])
 
+  // Debug effect to track AI calls state changes
+  useEffect(() => {
+    console.log('🤖 AI calls state changed:', aiModelCalls.length, 'calls')
+  }, [aiModelCalls])
+
   const fetchData = async () => {
     try {
       console.log('🤖 fetchData called, current AI calls:', aiModelCalls.length)
       console.log('🤖 AI calls content:', aiModelCalls)
+      console.log('🤖 fetchData will NOT clear AI calls')
       const [predictionsRes, regionsRes, cropsRes] = await Promise.all([
         fetch('/api/predictions'),
         fetch('/api/regions'),
@@ -155,9 +161,14 @@ export default function PredictionsPage() {
         response: result,
         responseTime: Date.now() - new Date(aiCall.timestamp).getTime()
       }
-      setAiModelCalls(prev => prev.map(call => 
-        call.timestamp === aiCall.timestamp ? updatedCall : call
-      ))
+      console.log('🤖 Updating prediction AI call with response:', updatedCall)
+      setAiModelCalls(prev => {
+        const updated = prev.map(call => 
+          call.timestamp === aiCall.timestamp ? updatedCall : call
+        )
+        console.log('🤖 AI calls after prediction update:', updated)
+        return updated
+      })
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to generate prediction')
@@ -285,6 +296,21 @@ export default function PredictionsPage() {
     console.log('🤖 AI calls cleared')
   }
 
+  // Test function to add a dummy AI call
+  const addTestAiCall = () => {
+    const testCall = {
+      timestamp: new Date().toISOString(),
+      endpoint: '/api/test',
+      method: 'GET',
+      request: { test: true },
+      status: 'success',
+      response: { success: true },
+      responseTime: 100
+    }
+    console.log('🤖 Adding test AI call:', testCall)
+    setAiModelCalls(prev => [...prev, testCall])
+  }
+
   if (loading && predictions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -327,10 +353,12 @@ export default function PredictionsPage() {
                status: call.status, 
                timestamp: call.timestamp 
              })))}</p>
+             <p>Component State: Loading={loading.toString()} | Error={error || 'none'}</p>
            </div>
         </div>
 
         {/* AI Model Endpoint Calls */}
+        {console.log('🤖 Rendering AI calls section, count:', aiModelCalls.length, 'calls:', aiModelCalls)}
         {aiModelCalls.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
