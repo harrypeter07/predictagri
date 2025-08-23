@@ -77,6 +77,15 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
 
       const result = await response.json()
       
+      // Debug: Log the API response structure
+      console.log('API Response:', result)
+      console.log('Result data structure:', result.data)
+      
+      // Validate the result structure
+      if (!result.data || typeof result.data !== 'object') {
+        throw new Error('Invalid response structure from analysis API')
+      }
+      
       // Store image analysis results in database
       try {
         await fetch('/api/image-analysis/store', {
@@ -100,7 +109,15 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
         // Continue with display even if storage fails
       }
       
-      setAnalysisResult(result.data)
+      // Ensure the result has the expected structure
+      const validatedResult = {
+        ...result.data,
+        analysisType: result.data.analysisType || analysisType,
+        timestamp: result.data.timestamp || new Date().toISOString(),
+        results: result.data.results || {}
+      }
+      
+      setAnalysisResult(validatedResult)
     } catch (err) {
       setError(err.message)
       console.error('Image analysis error:', err)
@@ -110,6 +127,8 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
   }
 
   const getScoreColor = (score) => {
+    if (score === null || score === undefined || isNaN(score)) return 'text-gray-400'
+    
     if (score > 0.8) return 'text-green-400'
     if (score > 0.6) return 'text-yellow-400'
     if (score > 0.4) return 'text-orange-400'
@@ -117,6 +136,8 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
   }
 
   const getScoreIcon = (score) => {
+    if (score === null || score === undefined || isNaN(score)) return '⚪'
+    
     if (score > 0.8) return '🟢'
     if (score > 0.6) return '🟡'
     if (score > 0.4) return '🟠'
@@ -124,6 +145,8 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
   }
 
   const getSeverityColor = (severity) => {
+    if (!severity || typeof severity !== 'string') return 'text-gray-400'
+    
     switch (severity.toLowerCase()) {
       case 'low': return 'text-green-400'
       case 'medium': return 'text-yellow-400'
@@ -151,15 +174,15 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
             <div className="space-y-4">
               <div className="flex items-center justify-center">
                 <img
-                  src={URL.createObjectURL(selectedImage)}
+                  src={selectedImage ? URL.createObjectURL(selectedImage) : ''}
                   alt="Selected"
                   className="max-h-48 rounded-lg border border-gray-600"
                 />
               </div>
               <div className="text-sm text-gray-300">
-                <p>File: {selectedImage.name}</p>
-                <p>Size: {(selectedImage.size / 1024 / 1024).toFixed(2)} MB</p>
-                <p>Type: {selectedImage.type}</p>
+                <p>File: {selectedImage?.name || 'Unknown'}</p>
+                <p>Size: {selectedImage?.size ? (selectedImage.size / 1024 / 1024).toFixed(2) : 'Unknown'} MB</p>
+                <p>Type: {selectedImage?.type || 'Unknown'}</p>
               </div>
               <button
                 onClick={() => setSelectedImage(null)}
@@ -273,18 +296,18 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
       )}
 
       {/* Analysis Results */}
-      {analysisResult && (
+      {analysisResult && analysisResult.results && (
         <div className="space-y-6">
           <div className="border-b border-gray-700 pb-4">
             <h4 className="text-lg font-semibold text-white mb-2">📊 Analysis Results</h4>
             <div className="text-sm text-gray-400">
-              <p>Analysis Type: {analysisResult.analysisType}</p>
-              <p>Timestamp: {new Date(analysisResult.timestamp).toLocaleString()}</p>
+              <p>Analysis Type: {analysisResult.analysisType || 'Unknown'}</p>
+              <p>Timestamp: {analysisResult.timestamp ? new Date(analysisResult.timestamp).toLocaleString() : 'Unknown'}</p>
             </div>
           </div>
 
           {/* Comprehensive Analysis Results */}
-          {analysisResult.analysisType === 'comprehensive' && analysisResult.results.overallScore && (
+          {analysisResult.analysisType === 'comprehensive' && analysisResult.results?.overallScore && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Overall Score */}
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
@@ -313,7 +336,7 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
 
           {/* Detailed Results by Analysis Type */}
           <div className="space-y-4">
-            {analysisResult.analysisType === 'crop-health' && analysisResult.results.healthScore && (
+            {analysisResult.analysisType === 'crop-health' && analysisResult.results?.healthScore && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-lg font-semibold text-white mb-3">🌱 Crop Health Analysis</h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -339,7 +362,7 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
               </div>
             )}
 
-            {analysisResult.analysisType === 'disease-detection' && analysisResult.results.diseaseProbability && (
+            {analysisResult.analysisType === 'disease-detection' && analysisResult.results?.diseaseProbability && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-lg font-semibold text-white mb-3">🦠 Disease Detection</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -359,7 +382,7 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
               </div>
             )}
 
-            {analysisResult.analysisType === 'soil-analysis' && analysisResult.results.soilQuality && (
+            {analysisResult.analysisType === 'soil-analysis' && analysisResult.results?.soilQuality && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-lg font-semibold text-white mb-3">🌍 Soil Analysis</h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -385,7 +408,7 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
               </div>
             )}
 
-            {analysisResult.analysisType === 'weed-detection' && analysisResult.results.weedCoverage && (
+            {analysisResult.analysisType === 'weed-detection' && analysisResult.results?.weedCoverage && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-lg font-semibold text-white mb-3">🌿 Weed Detection</h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -406,7 +429,7 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
             )}
 
             {/* Recommendations */}
-            {analysisResult.results.recommendations && (
+            {analysisResult.results?.recommendations && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-lg font-semibold text-white mb-3">💡 Recommendations</h5>
                 <ul className="space-y-2">
@@ -421,7 +444,7 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
             )}
 
             {/* Priority Actions for Comprehensive Analysis */}
-            {analysisResult.results.priorityActions && (
+            {analysisResult.results?.priorityActions && (
               <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
                 <h5 className="text-lg font-semibold text-white mb-3">🚨 Priority Actions</h5>
                 <ul className="space-y-2">
@@ -434,6 +457,139 @@ export const ImageAnalysisDashboard = ({ regions, crops }) => {
                 </ul>
               </div>
             )}
+
+            {/* Handle comprehensive analysis results structure */}
+            {analysisResult.analysisType === 'comprehensive' && analysisResult.results && (
+              <>
+                {/* Crop Health from comprehensive analysis */}
+                {analysisResult.results.cropHealth && (
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                    <h5 className="text-lg font-semibold text-white mb-3">🌱 Crop Health</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className={`text-2xl font-bold mb-1 ${getScoreColor(analysisResult.results.cropHealth.ndvi || 0)}`}>
+                          {((analysisResult.results.cropHealth.ndvi || 0) * 100).toFixed(1)}%
+                        </div>
+                        <p className="text-sm text-gray-400">NDVI Score</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold mb-1 text-blue-400">
+                          {analysisResult.results.cropHealth.vigor || 'Unknown'}
+                        </div>
+                        <p className="text-sm text-gray-400">Vigor</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Diseases from comprehensive analysis */}
+                {analysisResult.results.diseases && (
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                    <h5 className="text-lg font-semibold text-white mb-3">🦠 Disease Detection</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className={`text-2xl font-bold mb-1 ${getSeverityColor(analysisResult.results.diseases.diseaseRisk || 'low')}`}>
+                          {analysisResult.results.diseases.diseaseRisk || 'Low'}
+                        </div>
+                        <p className="text-sm text-gray-400">Disease Risk</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold mb-1 text-yellow-400">
+                          {analysisResult.results.diseases.hotspots?.length || 0}
+                        </div>
+                        <p className="text-sm text-gray-400">Hotspots</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Soil from comprehensive analysis */}
+                {analysisResult.results.soil && (
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                    <h5 className="text-lg font-semibold text-white mb-3">🌍 Soil Analysis</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold mb-1 text-blue-400">
+                          {(analysisResult.results.soil.moisture * 100).toFixed(1)}%
+                        </div>
+                        <p className="text-sm text-gray-400">Moisture</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold mb-1 text-yellow-400">
+                          {analysisResult.results.soil.ph}
+                        </div>
+                        <p className="text-sm text-gray-400">pH Level</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold mb-1 text-green-400">
+                          {analysisResult.results.soil.confidence * 100}%
+                        </div>
+                        <p className="text-sm text-gray-400">Confidence</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Weeds from comprehensive analysis */}
+                {analysisResult.results.weeds && (
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                    <h5 className="text-lg font-semibold text-white mb-3">🌿 Weed Detection</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className={`text-2xl font-bold mb-1 ${getScoreColor(1 - (analysisResult.results.weeds.weedCoveragePct || 0) / 100)}`}>
+                          {(analysisResult.results.weeds.weedCoveragePct || 0).toFixed(1)}%
+                        </div>
+                        <p className="text-sm text-gray-400">Weed Coverage</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold mb-1 text-green-400">
+                          {analysisResult.results.weeds.confidence * 100}%
+                        </div>
+                        <p className="text-sm text-gray-400">Confidence</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* General recommendations from comprehensive analysis */}
+                {analysisResult.results.recommendations && (
+                  <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+                    <h5 className="text-lg font-semibold text-white mb-3">💡 General Recommendations</h5>
+                    <ul className="space-y-2">
+                      {analysisResult.results.recommendations.map((rec, index) => (
+                        <li key={index} className="flex items-start space-x-2">
+                          <span className="text-blue-400 mt-1">•</span>
+                          <span className="text-gray-300">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* No Results Message */}
+      {analysisResult && !analysisResult.results && (
+        <div className="bg-gray-800 p-6 rounded-lg border border-gray-600 text-center">
+          <div className="text-4xl mb-4">📊</div>
+          <h4 className="text-lg font-semibold text-white mb-2">Analysis Complete</h4>
+          <p className="text-gray-400">No detailed results available for this analysis type.</p>
+        </div>
+      )}
+
+      {/* Error in Results Structure */}
+      {analysisResult && analysisResult.results && !analysisResult.results.recommendations && !analysisResult.results.cropHealth && !analysisResult.results.diseases && !analysisResult.results.soil && !analysisResult.results.weeds && (
+        <div className="bg-yellow-800 p-6 rounded-lg border border-yellow-600 text-center">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h4 className="text-lg font-semibold text-white mb-2">Results Structure Issue</h4>
+          <p className="text-gray-300">Analysis completed but results structure is unexpected. Please try again or contact support.</p>
+          <div className="mt-4 p-3 bg-gray-700 rounded text-left">
+            <p className="text-xs text-gray-400">Debug Info:</p>
+            <p className="text-xs text-gray-300">Analysis Type: {analysisResult.analysisType}</p>
+            <p className="text-xs text-gray-300">Results Keys: {Object.keys(analysisResult.results || {}).join(', ')}</p>
           </div>
         </div>
       )}
