@@ -103,7 +103,8 @@ export default function Home() {
 
     try {
       // Import location service dynamically (client-side only)
-      const { locationService } = await import('../lib/locationService')
+      const LocationService = await import('../lib/locationService')
+      const locationService = new LocationService.default()
       
       // Get user's current location with better error handling
       let userLocation
@@ -416,6 +417,39 @@ export default function Home() {
                 <div className="p-4 bg-gray-800 rounded-lg">
                   <h3 className="font-semibold text-pink-400 mb-2">✅ Productivity Zones</h3>
                   <p className="text-gray-300 text-sm">Geographic analysis with productivity scoring</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Soil Sample Testing - Coming Soon */}
+            <div className="mt-8 bg-gradient-to-r from-orange-900 to-yellow-900 rounded-lg shadow-lg border border-orange-700 p-6">
+              <div className="text-center">
+                <div className="text-4xl mb-4">🧪</div>
+                <h2 className="text-2xl font-semibold mb-2 text-white">Soil Sample Testing</h2>
+                <p className="text-lg text-orange-200 mb-4">Advanced soil analysis and recommendations coming soon!</p>
+                <div className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-full">
+                  <span className="animate-pulse mr-2">🔮</span>
+                  Coming Soon
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-orange-100">
+                <div>
+                  <h4 className="font-medium text-white mb-2">Planned Features:</h4>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Soil pH & Nutrient Analysis</li>
+                    <li>Organic Matter Content</li>
+                    <li>Soil Texture Classification</li>
+                    <li>Fertilizer Recommendations</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-white mb-2">Benefits:</h4>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Precision Agriculture</li>
+                    <li>Optimal Crop Selection</li>
+                    <li>Cost-Effective Fertilization</li>
+                    <li>Sustainable Farming</li>
+                  </ul>
                 </div>
               </div>
             </div>

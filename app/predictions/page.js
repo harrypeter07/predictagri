@@ -43,7 +43,8 @@ export default function PredictionsPage() {
     // Get user location on component mount
     const getUserLocation = async () => {
       try {
-        const { locationService } = await import('../../lib/locationService')
+        const LocationService = await import('../../lib/locationService')
+        const locationService = new LocationService.default()
         const location = await locationService.getLocationWithFallback()
         setUserLocation(location)
         console.log('🤖 User location set:', location)
@@ -102,7 +103,8 @@ export default function PredictionsPage() {
 
     try {
       // Get user location and real-time weather data
-      const { locationService } = await import('../../lib/locationService')
+      const LocationService = await import('../../lib/locationService')
+      const locationService = new LocationService.default()
       const userLocation = await locationService.getLocationWithFallback()
       const weatherData = await locationService.getCurrentLocationWeather()
       

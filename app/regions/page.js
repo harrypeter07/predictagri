@@ -42,7 +42,8 @@ export default function RegionsPage() {
     setLoading(true)
     try {
       // Get user's current location
-      const { locationService } = await import('../../lib/locationService')
+      const LocationService = await import('../../lib/locationService')
+      const locationService = new LocationService.default()
       const userLocation = await locationService.getLocationWithFallback()
       const address = await locationService.getAddressFromCoordinates(userLocation.lat, userLocation.lon)
       

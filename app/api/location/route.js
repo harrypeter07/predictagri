@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { Logger } from '../../../lib/logger'
-import { locationService } from '../../../lib/locationService.js'
+import LocationService from '../../../lib/locationService.js'
+
+const locationService = new LocationService()
 
 export async function GET(request) {
   const logger = new Logger({ route: '/api/location' })
