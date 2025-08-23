@@ -20,6 +20,7 @@ import AgriPipelinePanel from '../components/AgriPipelinePanel'
 import NasaPanel from '../components/NasaPanel'
 import AlertsPanel from '../components/AlertsPanel'
 import VoicePanel from '../components/VoicePanel'
+import { HeroLogo } from '../components/Logo'
 
 export default function PredictionsPage() {
   const [predictions, setPredictions] = useState([])
@@ -329,6 +330,9 @@ export default function PredictionsPage() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Page Header */}
         <div className="text-center">
+          <div className="mb-6">
+            <HeroLogo />
+          </div>
           <h1 className="text-4xl font-bold text-white mb-4">🌾 Agricultural Predictions & Analytics</h1>
           <p className="text-gray-300 text-lg">Comprehensive analysis of crop performance, weather patterns, and farming recommendations</p>
           

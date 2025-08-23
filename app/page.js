@@ -13,6 +13,7 @@ import {
 import EnhancedFarmerAnalysis from './components/EnhancedFarmerAnalysis'
 import AgriPipelinePanel from './components/AgriPipelinePanel'
 import SatelliteDataDashboard from './components/SatelliteDataDashboard'
+import { HeroLogo, FeatureBadges } from './components/Logo'
 
 export default function Home() {
   const [predictions, setPredictions] = useState([])
@@ -428,10 +429,11 @@ export default function Home() {
       
       <div className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          <header className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-green-400 mb-2">🌱 PredictAgri Dashboard</h1>
-            <p className="text-lg text-gray-300">AI/ML Solution for Crop Yield Prediction with Advanced Analytics</p>
-          </header>
+          {/* Hero Section with Logo */}
+          <div className="text-center mb-12">
+            <HeroLogo />
+            <FeatureBadges />
+          </div>
 
           {/* Tab Navigation */}
           <div className="flex space-x-1 bg-gray-800 p-1 rounded-lg mb-8 max-w-md mx-auto">

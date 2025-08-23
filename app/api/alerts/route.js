@@ -46,6 +46,54 @@ export async function GET(request) {
   logger.info('alert_status_request', { phoneNumber, language })
   
   try {
+    // Check Twilio configuration
+    const hasTwilioConfig = !!process.env.TWILIO_ACCOUNT_SID
+    
+    if (!hasTwilioConfig) {
+      return NextResponse.json({
+        success: false,
+        configured: false,
+        message: 'Twilio not configured. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER to environment variables.'
+      })
+    }
+    
+    // Check if SMS limit is exceeded
+    if (process.env.SMS_LIMIT_EXCEEDED === 'true') {
+      return NextResponse.json({
+        success: false,
+        configured: true,
+        limitExceeded: true,
+        message: 'Daily SMS limit exceeded. Twilio trial accounts have 9 SMS/day limit. Will reset at midnight UTC.',
+        suggestion: 'Upgrade Twilio account or wait for daily reset'
+      })
+    }
+    
+    // Test SMS functionality if phone number provided
+    if (phoneNumber) {
+      const testResult = await twilioService.testSMS(phoneNumber, 'Test SMS from PredictAgri - System Check')
+      
+      // Check if test failed due to daily limit
+      if (!testResult.success && testResult.error && testResult.error.includes('exceeded the 9 daily messages limit')) {
+        process.env.SMS_LIMIT_EXCEEDED = 'true'
+        return NextResponse.json({
+          success: false,
+          configured: true,
+          limitExceeded: true,
+          message: 'Daily SMS limit exceeded. Twilio trial accounts have 9 SMS/day limit. Will reset at midnight UTC.',
+          suggestion: 'Upgrade Twilio account or wait for daily reset',
+          testResult
+        })
+      }
+      
+      return NextResponse.json({
+        success: true,
+        configured: true,
+        limitExceeded: false,
+        testResult,
+        message: 'Twilio SMS service is working correctly'
+      })
+    }
+    
     // Return alert capabilities
     return NextResponse.json({
       success: true,
@@ -55,7 +103,8 @@ export async function GET(request) {
         languages: ['en', 'hi', 'mr'],
         alertTypes: ['drought', 'flood', 'pest', 'disease', 'weather', 'yield']
       },
-      configured: !!process.env.TWILIO_ACCOUNT_SID
+      configured: hasTwilioConfig,
+      limitExceeded: process.env.SMS_LIMIT_EXCEEDED === 'true'
     })
   } catch (error) {
     logger.error('alert_status_failed', { error: error.message })

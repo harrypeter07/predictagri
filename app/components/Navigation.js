@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import Logo from './Logo'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -13,7 +14,8 @@ export default function Navigation() {
     { href: '/predictions', label: 'Predictions', icon: '📊' },
     { href: '/image-analysis', label: 'Image Analysis', icon: '🔍' },
     { href: '/onnx-test', label: 'ONNX Test', icon: '🤖' },
-    { href: '/ai-model-test', label: 'AI Model Test', icon: '🧪' }
+    { href: '/ai-model-test', label: 'AI Model Test', icon: '🧪' },
+    { href: '/logo-test', label: 'Logo Test', icon: '🎨' }
   ]
 
   return (
@@ -21,10 +23,7 @@ export default function Navigation() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-2xl">🌱</span>
-              <span className="text-xl font-bold text-green-400">PredictAgri</span>
-            </Link>
+            <Logo size="medium" />
           </div>
           
           <div className="hidden md:flex space-x-8">
