@@ -27,7 +27,7 @@ export default function PredictionsPage() {
   const [predictions, setPredictions] = useState([])
   const [regions, setRegions] = useState([])
   const [crops, setCrops] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [selectedCrop, setSelectedCrop] = useState('')
   const [selectedRegion, setSelectedRegion] = useState('')
@@ -313,7 +313,7 @@ export default function PredictionsPage() {
     setAiModelCalls(prev => [...prev, testCall])
   }
 
-  if (loading && predictions.length === 0) {
+  if (loading && predictions.length === 0 && regions.length === 0 && crops.length === 0) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8">
         <div className="max-w-7xl mx-auto">

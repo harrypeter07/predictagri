@@ -25,8 +25,7 @@ export default function VoicePanel() {
   const [checkingGemini, setCheckingGemini] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechVolume, setSpeechVolume] = useState(0)
-  const [autoSendCountdown, setAutoSendCountdown] = useState(0)
-  const [showAutoSendIndicator, setShowAutoSendIndicator] = useState(false)
+
   
   const recognitionRef = useRef(null)
   const synthRef = useRef(null)
@@ -96,18 +95,35 @@ export default function VoicePanel() {
         }
       }
       
-      recognitionRef.current.onend = () => {
-        addSpeechLog('INFO', 'Speech recognition ended')
-        setIsListening(false)
-        setIsRecording(false)
-        
-        // If we have a transcript, keep it visible for a moment
-        if (transcript.trim()) {
-          setTimeout(() => {
-            setTranscript('')
-          }, 2000)
-        }
-      }
+             recognitionRef.current.onend = () => {
+         addSpeechLog('INFO', 'Speech recognition ended')
+         setIsListening(false)
+         setIsRecording(false)
+         
+         // Store the transcript before clearing it
+         const finalTranscript = transcript.trim()
+         
+         // Auto-send the transcribed text to AI immediately
+         if (finalTranscript) {
+           addSpeechLog('INFO', 'Auto-sending transcribed text to AI', { transcript: finalTranscript })
+           
+           // Set the query to the transcribed text
+           setQuery(finalTranscript)
+           
+           // Automatically ask the AI after a short delay
+           setTimeout(() => {
+             console.log('🚀 Auto-sending to AI:', finalTranscript)
+             ask()
+           }, 500) // 500ms delay to ensure state is updated
+         } else {
+           addSpeechLog('WARNING', 'No transcript to auto-send', { transcript, finalTranscript })
+         }
+         
+         // Clear transcript after a longer delay to ensure auto-send works
+         setTimeout(() => {
+           setTranscript('')
+         }, 3000) // 3 second delay
+       }
       
       recognitionRef.current.onerror = (event) => {
         addSpeechLog('ERROR', 'Speech recognition error', { error: event.error, details: event })
@@ -310,20 +326,38 @@ export default function VoicePanel() {
           }
         }
         
-        recognitionRef.current.onend = () => {
-          addSpeechLog('INFO', 'Speech recognition ended')
-          setIsListening(false)
-          setIsRecording(false)
-          
-          // Stop audio analysis
-          stopAudioAnalysis()
-          
-          if (transcript.trim()) {
-            setTimeout(() => {
-              setTranscript('')
-            }, 2000)
-          }
-        }
+                 recognitionRef.current.onend = () => {
+           addSpeechLog('INFO', 'Speech recognition ended')
+           setIsListening(false)
+           setIsRecording(false)
+           
+           // Stop audio analysis
+           stopAudioAnalysis()
+           
+           // Store the transcript before clearing it
+           const finalTranscript = transcript.trim()
+           
+           // Auto-send the transcribed text to AI immediately
+           if (finalTranscript) {
+             addSpeechLog('INFO', 'Auto-sending transcribed text to AI', { transcript: finalTranscript })
+             
+             // Set the query to the transcribed text
+             setQuery(finalTranscript)
+             
+             // Automatically ask the AI after a short delay
+             setTimeout(() => {
+               console.log('🚀 Auto-sending to AI (reloaded):', finalTranscript)
+               ask()
+             }, 500) // 500ms delay to ensure state is updated
+           } else {
+             addSpeechLog('WARNING', 'No transcript to auto-send (reloaded)', { transcript, finalTranscript })
+           }
+           
+           // Clear transcript after a longer delay to ensure auto-send works
+           setTimeout(() => {
+             setTranscript('')
+           }, 3000) // 3 second delay
+         }
         
         recognitionRef.current.onerror = (event) => {
           addSpeechLog('ERROR', 'Speech recognition error', { error: event.error, details: event })
@@ -515,9 +549,7 @@ export default function VoicePanel() {
     if (!analyserRef.current) return
     
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount)
-    let silenceTimer = null
-    let hasTranscribedText = false
-    let countdownInterval = null
+
     
     const updateVolume = () => {
       analyserRef.current.getByteFrequencyData(dataArray)
@@ -533,105 +565,24 @@ export default function VoicePanel() {
       const normalizedVolume = Math.min(100, (average / 128) * 100)
       setSpeechVolume(normalizedVolume)
       
-      // Check if speech has stopped (very low volume for 2 seconds)
-      if (normalizedVolume < 5) {
-        if (!isSpeaking) {
-          setIsSpeaking(false)
-          
-          // Check if we have transcribed text and should auto-send
-          if (isRecording && transcript.trim() && !hasTranscribedText) {
-            hasTranscribedText = true
-            
-            // Clear any existing silence timer
-            if (silenceTimer) {
-              clearTimeout(silenceTimer)
-            }
-            
-            // Show auto-send indicator and start countdown
-            setShowAutoSendIndicator(true)
-            setAutoSendCountdown(15) // 1.5 seconds = 15 * 100ms
-            
-            // Start countdown timer
-            countdownInterval = setInterval(() => {
-              setAutoSendCountdown(prev => {
-                if (prev <= 1) {
-                  // Countdown finished, auto-send
-                  clearInterval(countdownInterval)
-                  setShowAutoSendIndicator(false)
-                  setAutoSendCountdown(0)
-                  
-                  if (isRecording && transcript.trim()) {
-                    addSpeechLog('INFO', 'Speech stopped, auto-sending to assistant', { transcript: transcript.trim() })
-                    
-                    // Auto-send the transcribed text to the assistant
-                    setQuery(transcript.trim())
-                    
-                    // Stop recording first
-                    stopRecording()
-                    
-                    // Then automatically ask the assistant
-                    setTimeout(() => {
-                      ask()
-                    }, 500) // Small delay to ensure recording is fully stopped
-                  }
-                  return 0
-                }
-                return prev - 1
-              })
-            }, 100) // Update every 100ms for smooth countdown
-            
-            // Wait for 1.5 seconds of silence, then auto-send
-            silenceTimer = setTimeout(() => {
-              if (isRecording && transcript.trim()) {
-                // Clear countdown if it hasn't finished yet
-                if (countdownInterval) {
-                  clearInterval(countdownInterval)
-                  setShowAutoSendIndicator(false)
-                  setAutoSendCountdown(0)
-                }
-                
-                addSpeechLog('INFO', 'Speech stopped, auto-sending to assistant', { transcript: transcript.trim() })
-                
-                // Auto-send the transcribed text to the assistant
-                setQuery(transcript.trim())
-                
-                // Stop recording first
-                stopRecording()
-                
-                // Then automatically ask the assistant
-                setTimeout(() => {
-                  ask()
-                }, 500) // Small delay to ensure recording is fully stopped
-              }
-            }, 1500) // 1.5 seconds of silence before auto-send
-          }
-          
-          // Auto-stop recording if no speech detected and no transcript
-          if (isRecording && transcript.trim() === '') {
-            setTimeout(() => {
+                // Check if speech has stopped (very low volume for 2 seconds)
+          if (normalizedVolume < 5) {
+            if (!isSpeaking) {
+              setIsSpeaking(false)
+              
+              // Auto-stop recording if no speech detected and no transcript
               if (isRecording && transcript.trim() === '') {
-                addSpeechLog('WARNING', 'No speech detected, auto-stopping')
-                stopRecording()
+                setTimeout(() => {
+                  if (isRecording && transcript.trim() === '') {
+                    addSpeechLog('WARNING', 'No speech detected, auto-stopping')
+                    stopRecording()
+                  }
+                }, 2000)
               }
-            }, 2000)
+            }
+          } else {
+            setIsSpeaking(true)
           }
-        }
-      } else {
-        setIsSpeaking(true)
-        hasTranscribedText = false // Reset flag when speech resumes
-        
-        // Clear silence timer and countdown when speech is detected
-        if (silenceTimer) {
-          clearTimeout(silenceTimer)
-          silenceTimer = null
-        }
-        if (countdownInterval) {
-          clearInterval(countdownInterval)
-          countdownInterval = null
-        }
-        setShowAutoSendIndicator(false)
-        setAutoSendCountdown(0)
-      }
       
       animationFrameRef.current = requestAnimationFrame(updateVolume)
     }
@@ -647,8 +598,6 @@ export default function VoicePanel() {
     }
     setIsSpeaking(false)
     setSpeechVolume(0)
-    setShowAutoSendIndicator(false)
-    setAutoSendCountdown(0)
   }
 
   // Cleanup audio resources
@@ -1001,6 +950,8 @@ export default function VoicePanel() {
 
   const ask = async () => {
     const inputText = transcript.trim() || query.trim()
+    
+    console.log('🤖 Ask function called with:', { transcript: transcript.trim(), query: query.trim(), inputText })
     
     if (!inputText) {
       setResult({ success: false, error: 'Please enter a question or use voice input' })
@@ -1357,8 +1308,8 @@ export default function VoicePanel() {
                 <div>2. Click the microphone button 🎤 to start recording</div>
                 <div>3. Speak clearly in your selected language</div>
                 <div>4. Your speech will appear in real-time below</div>
-                <div>5. Click the stop button ⏹️ when finished</div>
-                <div>6. Click &quot;Ask Assistant&quot; to get your response</div>
+                <div>5. <strong>🎯 Speech automatically sends to AI when you stop talking!</strong></div>
+                <div>6. No need to press &quot;Ask Assistant&quot; - it happens automatically</div>
               </div>
             </div>
             
@@ -1661,6 +1612,20 @@ export default function VoicePanel() {
           <div className="text-white font-medium">{transcript}</div>
           <div className="text-blue-300 text-xs mt-1">
             {isListening ? 'Listening... Speak clearly' : 'Processing...'}
+          </div>
+        </div>
+      )}
+
+      {/* Auto-send indicator */}
+      {transcript && !isListening && (
+        <div className="bg-green-900 border border-green-700 rounded p-3 mb-3">
+          <div className="text-green-300 text-sm mb-1 flex items-center">
+            <span className="animate-pulse mr-2">🚀</span>
+            Auto-sending to AI...
+          </div>
+          <div className="text-white font-medium">{transcript}</div>
+          <div className="text-green-300 text-xs mt-1">
+            Your voice input is being automatically sent to the AI assistant
           </div>
         </div>
       )}
