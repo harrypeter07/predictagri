@@ -12,7 +12,8 @@ export default function Navigation() {
     { href: '/crops', label: 'Crops', icon: '🌾' },
     { href: '/predictions', label: 'Predictions', icon: '📊' },
     { href: '/image-analysis', label: 'Image Analysis', icon: '🔍' },
-    { href: '/onnx-test', label: 'ONNX Test', icon: '🤖' }
+    { href: '/onnx-test', label: 'ONNX Test', icon: '🤖' },
+    { href: '/ai-model-test', label: 'AI Model Test', icon: '🧪' }
   ]
 
   return (

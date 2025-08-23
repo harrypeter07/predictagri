@@ -354,6 +354,12 @@ export default function PredictionsPage() {
                timestamp: call.timestamp 
              })))}</p>
              <p>Component State: Loading={loading.toString()} | Error={error || 'none'}</p>
+             <button 
+               onClick={addTestAiCall}
+               className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs"
+             >
+               Test AI Call Display
+             </button>
            </div>
         </div>
 
