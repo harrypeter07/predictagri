@@ -6,19 +6,75 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const lat = parseFloat(searchParams.get('lat') || '0')
   const lon = parseFloat(searchParams.get('lon') || '0')
-  const logger = new Logger({ route: '/api/weather', lat, lon })
+  const regionId = searchParams.get('regionId')
+  const logger = new Logger({ route: '/api/weather', lat, lon, regionId })
 
   try {
     logger.info('weather_request_received')
 
-    const [current, daily] = await Promise.all([
-      openMeteoService.getCurrent(lat, lon),
-      openMeteoService.getDaily(lat, lon)
-    ])
+    // If specific coordinates or region requested, get current weather
+    if (lat !== 0 && lon !== 0) {
+      const [current, daily] = await Promise.all([
+        openMeteoService.getCurrent(lat, lon),
+        openMeteoService.getDaily(lat, lon)
+      ])
 
-    logger.info('weather_success')
+      logger.info('weather_success')
+      return NextResponse.json({ success: true, current: current.current, daily: daily.daily })
+    }
 
-    return NextResponse.json({ success: true, current: current.current, daily: daily.daily })
+    // If no specific coordinates, return historical weather data from database
+    if (regionId) {
+      // Get weather data for specific region
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: weatherData, error } = await supabase
+        .from('weather_data')
+        .select(`
+          *,
+          regions(name)
+        `)
+        .eq('region_id', regionId)
+        .order('timestamp', { ascending: false })
+        .limit(10)
+      
+      if (error) {
+        logger.error('weather_db_query_failed', { error: error.message })
+        return NextResponse.json({ success: false, error: 'Failed to fetch weather data' }, { status: 500 })
+      }
+      
+      logger.info('weather_historical_success', { count: weatherData?.length || 0 })
+      return NextResponse.json(weatherData || [])
+    }
+
+    // Return all recent weather data from database
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+    
+    const { data: weatherData, error } = await supabase
+      .from('weather_data')
+      .select(`
+        *,
+        regions(name)
+      `)
+      .order('timestamp', { ascending: false })
+      .limit(20)
+    
+    if (error) {
+      logger.error('weather_db_query_failed', { error: error.message })
+      return NextResponse.json({ success: false, error: 'Failed to fetch weather data' }, { status: 500 })
+    }
+    
+    logger.info('weather_historical_success', { count: weatherData?.length || 0 })
+    return NextResponse.json(weatherData || [])
+
   } catch (error) {
     logger.error('weather_failed', { error: error.message })
     return NextResponse.json({ success: false, error: error.message }, { status: 502 })

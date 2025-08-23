@@ -3,22 +3,20 @@
 import { useState, useEffect } from 'react'
 import Navigation from './components/Navigation'
 import Link from 'next/link'
-import { 
-  YieldTrendChart, 
-  RegionalPerformanceChart, 
-  CropDistributionChart, 
-  ProductivityZoneMap, 
-  WeatherAlertSystem 
-} from './components/Charts'
 import EnhancedFarmerAnalysis from './components/EnhancedFarmerAnalysis'
 import AgriPipelinePanel from './components/AgriPipelinePanel'
 import SatelliteDataDashboard from './components/SatelliteDataDashboard'
+import RealTimeAnalytics from './components/RealTimeAnalytics'
+import WeatherAlerts from './components/WeatherAlerts'
+import DataSummary from './components/DataSummary'
 import { HeroLogo, FeatureBadges } from './components/Logo'
 
 export default function Home() {
   const [predictions, setPredictions] = useState([])
   const [regions, setRegions] = useState([])
   const [crops, setCrops] = useState([])
+  const [weatherData, setWeatherData] = useState([])
+  const [satelliteData, setSatelliteData] = useState([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -31,10 +29,13 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const [predictionsRes, regionsRes, cropsRes] = await Promise.all([
+      setLoading(true)
+      const [predictionsRes, regionsRes, cropsRes, weatherRes, satelliteRes] = await Promise.all([
         fetch('/api/predictions'),
         fetch('/api/regions'),
-        fetch('/api/crops')
+        fetch('/api/crops'),
+        fetch('/api/weather'),
+        fetch('/api/satellite')
       ])
 
       if (predictionsRes.ok) {
@@ -51,8 +52,21 @@ export default function Home() {
         const cropsData = await cropsRes.json()
         setCrops(cropsData)
       }
+
+      if (weatherRes.ok) {
+        const weatherData = await weatherRes.json()
+        setWeatherData(weatherData)
+      }
+
+      if (satelliteRes.ok) {
+        const satelliteData = await satelliteRes.json()
+        setSatelliteData(satelliteData)
+      }
     } catch (err) {
       setError('Error fetching data')
+      console.error('Data fetch error:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -182,25 +196,24 @@ export default function Home() {
               </div>
             )}
 
-            {/* Advanced Analytics Dashboard */}
+            {/* Real-Time Analytics Dashboard */}
             <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-6 text-center">📊 Advanced Analytics Dashboard</h2>
+              <h2 className="text-2xl font-semibold text-white mb-6 text-center">📊 Real-Time Analytics Dashboard</h2>
               
-              {/* Charts Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <YieldTrendChart data={predictions} />
-                <RegionalPerformanceChart regions={regions} predictions={predictions} />
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <CropDistributionChart crops={crops} predictions={predictions} />
-                <ProductivityZoneMap regions={regions} predictions={predictions} />
-              </div>
+              <RealTimeAnalytics 
+                predictions={predictions}
+                regions={regions}
+                crops={crops}
+                weatherData={weatherData}
+                satelliteData={satelliteData}
+              />
             </div>
 
-            {/* Weather Alert System */}
+            {/* Real-Time Weather & Alerts */}
             <div className="mb-8">
-              <WeatherAlertSystem predictions={predictions} />
+              <h2 className="text-2xl font-semibold text-white mb-6 text-center">🌦️ Real-Time Weather & Alerts</h2>
+              
+              <WeatherAlerts weatherData={weatherData} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -213,7 +226,12 @@ export default function Home() {
                   </Link>
                 </div>
                 
-                {predictions.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+                    <p className="text-gray-400 mt-2">Loading predictions...</p>
+                  </div>
+                ) : predictions.length === 0 ? (
                   <p className="text-gray-400">No predictions yet. Generate one to see results!</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -247,31 +265,13 @@ export default function Home() {
               </div>
 
               {/* System Status */}
-              <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 p-6">
-                <h2 className="text-2xl font-semibold mb-4 text-white">System Status</h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-blue-900 rounded border border-blue-700">
-                    <span className="font-medium text-blue-200">Total Predictions</span>
-                    <span className="text-2xl font-bold text-blue-400">{predictions.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-green-900 rounded border border-green-700">
-                    <span className="font-medium text-green-200">Regions Available</span>
-                    <span className="text-2xl font-bold text-green-400">{regions.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-purple-900 rounded border border-purple-700">
-                    <span className="font-medium text-purple-200">Crops Supported</span>
-                    <span className="text-2xl font-bold text-purple-400">{crops.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-orange-900 rounded border border-orange-700">
-                    <span className="font-medium text-orange-200">Database Status</span>
-                    <span className="text-green-400 font-semibold">✅ Connected</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-indigo-900 rounded border border-indigo-700">
-                    <span className="font-medium text-indigo-200">ML Model Status</span>
-                    <span className="text-yellow-400 font-semibold">🔄 Ready for Integration</span>
-                  </div>
-                </div>
-              </div>
+              <DataSummary 
+                predictions={predictions}
+                regions={regions}
+                crops={crops}
+                weatherData={weatherData}
+                satelliteData={satelliteData}
+              />
             </div>
 
             {/* Setup Instructions */}
@@ -336,87 +336,87 @@ export default function Home() {
       case 'farmer-analysis':
         return <EnhancedFarmerAnalysis />
       
-             case 'pipeline':
-         return (
-           <div className="space-y-6">
-             <div className="text-center mb-8">
-               <h2 className="text-3xl font-bold text-green-400 mb-2">🚀 Enhanced Automated Pipeline</h2>
-               <p className="text-lg text-gray-300">Advanced agricultural data processing with farmer analysis integration</p>
-             </div>
-             
-             <AgriPipelinePanel region="maharashtra" />
-             
-             <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
-               <h3 className="text-xl font-semibold text-white mb-4">🔧 Pipeline Features</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-                 <div>
-                   <h4 className="font-medium text-white mb-2">Data Sources:</h4>
-                   <ul className="list-disc ml-5 space-y-1">
-                     <li>Google Earth Engine Satellite Data</li>
-                     <li>Weather APIs (Open-Meteo)</li>
-                     <li>NASA Agricultural Insights</li>
-                     <li>Image Processing & Analysis</li>
-                     <li>Soil Quality Assessment</li>
-                   </ul>
-                 </div>
-                 <div>
-                   <h4 className="font-medium text-white mb-2">Analysis Capabilities:</h4>
-                   <ul className="list-disc ml-5 space-y-1">
-                     <li>Crop Suitability Analysis</li>
-                     <li>Water Management Assessment</li>
-                     <li>Pest Risk Evaluation</li>
-                     <li>Yield Potential Prediction</li>
-                     <li>Climate Adaptation Strategies</li>
-                   </ul>
-                 </div>
-               </div>
-             </div>
-           </div>
-         )
-       
-       case 'satellite':
-         return (
-           <div className="space-y-6">
-             <div className="text-center mb-8">
-               <h2 className="text-3xl font-bold text-blue-400 mb-2">🛰️ Satellite Data Dashboard</h2>
-               <p className="text-lg text-gray-300">Real-time satellite imagery and vegetation analysis from Google Earth Engine</p>
-             </div>
-             
-             <SatelliteDataDashboard 
-               region={{ name: 'Maharashtra', lat: 19.7515, lon: 75.7139 }}
-               farmerData={{
-                 farmerId: 'demo-farmer-001',
-                 coordinates: { lat: 19.7515, lon: 75.7139 }
-               }}
-             />
-             
-             <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
-               <h3 className="text-xl font-semibold text-white mb-4">🛰️ Satellite Features</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-                 <div>
-                   <h4 className="font-medium text-white mb-2">Data Types:</h4>
-                   <ul className="list-disc ml-5 space-y-1">
-                     <li>NDVI (Normalized Difference Vegetation Index)</li>
-                     <li>True Color RGB Satellite Images</li>
-                     <li>Land Surface Temperature</li>
-                     <li>Soil Moisture & Composition</li>
-                     <li>Land Use Classification</li>
-                   </ul>
-                 </div>
-                 <div>
-                   <h4 className="font-medium text-white mb-2">Satellite Sources:</h4>
-                   <ul className="list-disc ml-5 space-y-1">
-                     <li>Sentinel-2 (10m resolution)</li>
-                     <li>MODIS (250m-1km resolution)</li>
-                     <li>SMAP (Soil Moisture)</li>
-                     <li>ESA WorldCover (Land Use)</li>
-                     <li>SoilGrids250m (Soil Properties)</li>
-                   </ul>
-                 </div>
-               </div>
-             </div>
-           </div>
-         )
+      case 'pipeline':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-green-400 mb-2">🚀 Enhanced Automated Pipeline</h2>
+              <p className="text-lg text-gray-300">Advanced agricultural data processing with farmer analysis integration</p>
+            </div>
+            
+            <AgriPipelinePanel region="maharashtra" />
+            
+            <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">🔧 Pipeline Features</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                <div>
+                  <h4 className="font-medium text-white mb-2">Data Sources:</h4>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Google Earth Engine Satellite Data</li>
+                    <li>Weather APIs (Open-Meteo)</li>
+                    <li>NASA Agricultural Insights</li>
+                    <li>Image Processing & Analysis</li>
+                    <li>Soil Quality Assessment</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-white mb-2">Analysis Capabilities:</h4>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Crop Suitability Analysis</li>
+                    <li>Water Management Assessment</li>
+                    <li>Pest Risk Evaluation</li>
+                    <li>Yield Potential Prediction</li>
+                    <li>Climate Adaptation Strategies</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      
+      case 'satellite':
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-blue-400 mb-2">🛰️ Satellite Data Dashboard</h2>
+              <p className="text-lg text-gray-300">Real-time satellite imagery and vegetation analysis from Google Earth Engine</p>
+            </div>
+            
+            <SatelliteDataDashboard 
+              region={{ name: 'Maharashtra', lat: 19.7515, lon: 75.7139 }}
+              farmerData={{
+                farmerId: 'demo-farmer-001',
+                coordinates: { lat: 19.7515, lon: 75.7139 }
+              }}
+            />
+            
+            <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
+              <h3 className="text-xl font-semibold text-white mb-4">🛰️ Satellite Features</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                <div>
+                  <h4 className="font-medium text-white mb-2">Data Types:</h4>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>NDVI (Normalized Difference Vegetation Index)</li>
+                    <li>True Color RGB Satellite Images</li>
+                    <li>Land Surface Temperature</li>
+                    <li>Soil Moisture & Composition</li>
+                    <li>Land Use Classification</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-white mb-2">Satellite Sources:</h4>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Sentinel-2 (10m resolution)</li>
+                    <li>MODIS (250m-1km resolution)</li>
+                    <li>SMAP (Soil Moisture)</li>
+                    <li>ESA WorldCover (Land Use)</li>
+                    <li>SoilGrids250m (Soil Properties)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
       
       default:
         return null

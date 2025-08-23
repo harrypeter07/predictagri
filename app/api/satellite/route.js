@@ -5,13 +5,49 @@ import { googleEarthEngineService } from '../../../lib/googleEarthEngineService'
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action')
+  const regionId = searchParams.get('regionId')
+  const dataType = searchParams.get('dataType')
+  const limit = parseInt(searchParams.get('limit') || '30')
+  
+  // If no specific action or region, return recent satellite data from database
+  if (!action && !regionId) {
+    try {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: satelliteData, error: dbError } = await supabase
+        .from('satellite_data')
+        .select(`
+          *,
+          regions(name)
+        `)
+        .order('timestamp', { ascending: false })
+        .limit(limit)
+      
+      if (dbError) {
+        console.error('Failed to fetch satellite data:', dbError)
+        return NextResponse.json(
+          { error: 'Failed to fetch satellite data' },
+          { status: 500 }
+        )
+      }
+      
+      return NextResponse.json(satelliteData || [])
+      
+    } catch (error) {
+      console.error('Satellite data fetch error:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch satellite data' },
+        { status: 500 }
+      )
+    }
+  }
   
   if (action === 'history') {
     try {
-      const regionId = searchParams.get('regionId')
-      const dataType = searchParams.get('dataType')
-      const limit = parseInt(searchParams.get('limit') || '30')
-      
       if (!regionId) {
         return NextResponse.json(
           { error: 'Region ID is required' },
@@ -64,10 +100,6 @@ export async function GET(request) {
   
   // Default behavior - get current satellite data
   try {
-    const regionId = searchParams.get('regionId')
-    const dataType = searchParams.get('dataType') || 'comprehensive'
-    const date = searchParams.get('date') || new Date().toISOString()
-
     if (!regionId) {
       return NextResponse.json(
         { error: 'Region ID is required' },
