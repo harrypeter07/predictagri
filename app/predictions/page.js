@@ -36,6 +36,7 @@ export default function PredictionsPage() {
   const [userLocation, setUserLocation] = useState(null)
 
   useEffect(() => {
+    console.log('🤖 useEffect called - initializing component')
     fetchData()
     // Get user location on component mount
     const getUserLocation = async () => {
@@ -43,6 +44,7 @@ export default function PredictionsPage() {
         const { locationService } = await import('../../lib/locationService')
         const location = await locationService.getLocationWithFallback()
         setUserLocation(location)
+        console.log('🤖 User location set:', location)
       } catch (error) {
         console.error('Failed to get user location:', error)
       }
@@ -163,7 +165,9 @@ export default function PredictionsPage() {
 
       // Refresh predictions data (but preserve AI calls)
       const currentAiCalls = [...aiModelCalls] // Create a copy
+      console.log('🤖 Before fetchData - AI calls count:', currentAiCalls.length)
       await fetchData()
+      console.log('🤖 After fetchData - restoring AI calls count:', currentAiCalls.length)
       setAiModelCalls(currentAiCalls) // Restore AI calls after fetchData
       
       // Show success message
@@ -171,9 +175,14 @@ export default function PredictionsPage() {
     } catch (err) {
       setError(err.message)
       // Update AI call with error
-      setAiModelCalls(prev => prev.map(call => 
-        call.status === 'calling' ? { ...call, status: 'error', error: err.message } : call
-      ))
+      console.log('🤖 Updating prediction AI call with error:', err.message)
+      setAiModelCalls(prev => {
+        const updated = prev.map(call => 
+          call.status === 'calling' ? { ...call, status: 'error', error: err.message } : call
+        )
+        console.log('🤖 AI calls after prediction error update:', updated)
+        return updated
+      })
     } finally {
       setLoading(false)
     }
@@ -219,6 +228,8 @@ export default function PredictionsPage() {
       setAiModelCalls(prev => {
         const newCalls = [...prev, aiCall]
         console.log('🤖 Updated AI calls after pipeline:', newCalls)
+        console.log('🤖 Previous calls count:', prev.length)
+        console.log('🤖 New calls count:', newCalls.length)
         return newCalls
       })
 
@@ -237,9 +248,14 @@ export default function PredictionsPage() {
         response: result,
         responseTime: Date.now() - new Date(aiCall.timestamp).getTime()
       }
-      setAiModelCalls(prev => prev.map(call => 
-        call.timestamp === aiCall.timestamp ? updatedCall : call
-      ))
+      console.log('🤖 Updating pipeline AI call with response:', updatedCall)
+      setAiModelCalls(prev => {
+        const updated = prev.map(call => 
+          call.timestamp === aiCall.timestamp ? updatedCall : call
+        )
+        console.log('🤖 AI calls after pipeline update:', updated)
+        return updated
+      })
 
       if (!response.ok) {
         throw new Error(result.error || 'Pipeline analysis failed')
@@ -250,17 +266,23 @@ export default function PredictionsPage() {
     } catch (err) {
       setError(err.message)
       // Update AI call with error
-      setAiModelCalls(prev => prev.map(call => 
-        call.status === 'calling' ? { ...call, status: 'error', error: err.message } : call
-      ))
+      console.log('🤖 Updating pipeline AI call with error:', err.message)
+      setAiModelCalls(prev => {
+        const updated = prev.map(call => 
+          call.status === 'calling' ? { ...call, status: 'error', error: err.message } : call
+        )
+        console.log('🤖 AI calls after pipeline error update:', updated)
+        return updated
+      })
     } finally {
       setLoading(false)
     }
   }
 
   const clearAiModelCalls = () => {
-    console.log('🤖 Clearing AI calls')
+    console.log('🤖 Clearing AI calls, current count:', aiModelCalls.length)
     setAiModelCalls([])
+    console.log('🤖 AI calls cleared')
   }
 
   if (loading && predictions.length === 0) {
@@ -297,10 +319,15 @@ export default function PredictionsPage() {
             )}
           </div>
           
-          {/* Debug Info */}
-          <div className="mt-2 p-2 bg-gray-700 rounded text-xs">
-            <p>Debug: AI Calls: {aiModelCalls.length} | Predictions: {predictions.length}</p>
-          </div>
+                     {/* Debug Info */}
+           <div className="mt-2 p-2 bg-gray-700 rounded text-xs">
+             <p>Debug: AI Calls: {aiModelCalls.length} | Predictions: {predictions.length}</p>
+             <p>AI Calls State: {JSON.stringify(aiModelCalls.map(call => ({ 
+               endpoint: call.endpoint, 
+               status: call.status, 
+               timestamp: call.timestamp 
+             })))}</p>
+           </div>
         </div>
 
         {/* AI Model Endpoint Calls */}

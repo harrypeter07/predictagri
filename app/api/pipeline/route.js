@@ -125,17 +125,19 @@ export async function POST(request) {
         }
       }
 
-      // Store results in database
-      storedResult = await storePipelineResults(result, region)
-      
-      // Send notification to farmer (use default phone for standard pipeline)
-      const defaultPhone = '+919322909257' // Default phone number for standard pipeline
-      notificationResult = await sendFarmerNotification(result, defaultPhone)
-      
-      console.log(`💾 [${requestId}] Standard pipeline results stored:`, {
-        stored: !!storedResult,
-        notification: notificationResult
-      })
+             // Store results in database
+       console.log(`💾 [${requestId}] Attempting to store pipeline results...`)
+       storedResult = await storePipelineResults(result, region)
+       console.log(`💾 [${requestId}] Storage result:`, storedResult)
+       
+       // Send notification to farmer (use default phone for standard pipeline)
+       const defaultPhone = '+919322909257' // Default phone number for standard pipeline
+       notificationResult = await sendFarmerNotification(result, defaultPhone)
+       
+       console.log(`💾 [${requestId}] Standard pipeline results stored:`, {
+         stored: !!storedResult,
+         notification: notificationResult
+       })
     }
 
     const responseTime = Date.now() - startTime
@@ -171,30 +173,36 @@ export async function POST(request) {
 // Database and notification helper functions
 async function storePipelineResults(pipelineResult, region) {
   try {
+    console.log('🔍 storePipelineResults called with:', { region, pipelineId: pipelineResult.pipelineId })
+    
     const { data: record, error } = await databaseService.withRetry(async () => {
+      const insertData = {
+        region_id: region || 'unknown',
+        pipeline_id: pipelineResult.pipelineId || `pipeline_${Date.now()}`,
+        analysis_type: 'standard_pipeline',
+        insights: pipelineResult.insights || [],
+        predictions: pipelineResult.predictions || [],
+        data_collection: {
+          weather: pipelineResult.dataCollection?.weather,
+          environmental: pipelineResult.dataCollection?.environmental,
+          imageAnalysis: pipelineResult.dataCollection?.imageAnalysis
+        },
+        alerts: pipelineResult.alerts || [],
+        recommendations: pipelineResult.recommendations || [],
+        created_at: new Date().toISOString()
+      }
+      console.log('🔍 Inserting data:', insertData)
+      
       return await databaseService.client
         .from('farmer_analysis_results')
-        .insert({
-          region_id: region || 'unknown',
-          pipeline_id: pipelineResult.pipelineId || `pipeline_${Date.now()}`,
-          analysis_type: 'standard_pipeline',
-          insights: pipelineResult.insights || [],
-          predictions: pipelineResult.predictions || [],
-          data_collection: {
-            weather: pipelineResult.dataCollection?.weather,
-            environmental: pipelineResult.dataCollection?.environmental,
-            imageAnalysis: pipelineResult.dataCollection?.imageAnalysis
-          },
-          alerts: pipelineResult.alerts || [],
-          recommendations: pipelineResult.recommendations || [],
-          created_at: new Date().toISOString()
-        })
+        .insert(insertData)
         .select()
         .single()
     }, 'store_pipeline_results')
 
     if (error) {
-      console.error('Failed to store pipeline results:', error)
+      console.error('❌ Failed to store pipeline results:', error)
+      console.error('❌ Error details:', { message: error.message, code: error.code, details: error.details })
       return { success: false, error: error.message }
     }
 
