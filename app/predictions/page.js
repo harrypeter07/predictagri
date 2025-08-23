@@ -30,7 +30,7 @@ export default function PredictionsPage() {
   const [selectedCrop, setSelectedCrop] = useState('')
   const [selectedRegion, setSelectedRegion] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
-  const [aiModelCalls, setAiModelCalls] = useState([])
+
   const [pipelineResults, setPipelineResults] = useState(null)
 
   useEffect(() => {
@@ -460,7 +460,7 @@ export default function PredictionsPage() {
               )}
 
               {/* Agricultural Insights */}
-              {pipelineResults.insights && (
+              {pipelineResults.insights && Array.isArray(pipelineResults.insights) && pipelineResults.insights.length > 0 && (
                 <div className="bg-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-medium text-white mb-3">🌾 Agricultural Insights</h3>
                   <div className="space-y-3">
@@ -474,7 +474,7 @@ export default function PredictionsPage() {
                                 {insight.data?.overall || 'Unknown'}
                               </span>
                             </p>
-                            {insight.data?.factors && (
+                            {insight.data?.factors && Array.isArray(insight.data.factors) && insight.data.factors.length > 0 && (
                               <div>
                                 <p className="text-gray-400 mb-1">Factors:</p>
                                 <ul className="ml-4 text-gray-300">
@@ -486,7 +486,7 @@ export default function PredictionsPage() {
                             )}
                           </div>
                           <div>
-                            {insight.data?.recommendations && (
+                            {insight.data?.recommendations && Array.isArray(insight.data.recommendations) && insight.data.recommendations.length > 0 && (
                               <div>
                                 <p className="text-gray-400 mb-1">Recommendations:</p>
                                 <ul className="ml-4 text-gray-300">
@@ -505,7 +505,7 @@ export default function PredictionsPage() {
               )}
 
               {/* Crop Recommendations */}
-              {pipelineResults.recommendations && (
+              {pipelineResults.recommendations && Array.isArray(pipelineResults.recommendations) && pipelineResults.recommendations.length > 0 && (
                 <div className="bg-gray-700 rounded-lg p-4">
                   <h3 className="text-lg font-medium text-white mb-3">💡 Actionable Recommendations</h3>
                   <div className="space-y-3">
@@ -589,7 +589,7 @@ export default function PredictionsPage() {
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Crop</option>
-                {crops.map((crop) => (
+                {Array.isArray(crops) && crops.map((crop) => (
                   <option key={crop.id} value={crop.id}>
                     {crop.name}
                   </option>
@@ -604,7 +604,7 @@ export default function PredictionsPage() {
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Region</option>
-                {regions.map((region) => (
+                {Array.isArray(regions) && regions.map((region) => (
                   <option key={region.id} value={region.id}>
                     {region.name}
                   </option>

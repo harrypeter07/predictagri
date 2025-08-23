@@ -7,7 +7,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [pipelineMode, setPipelineMode] = useState('standard') // 'standard' or 'farmer'
-  const [aiModelCalls, setAiModelCalls] = useState([])
+
   const [farmerData, setFarmerData] = useState({
     farmerId: '',
     coordinates: { lat: 21.1458, lon: 79.0882 },
@@ -16,9 +16,8 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
 
   const runPipeline = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      setAiModelCalls([])
+              setLoading(true)
+        setError(null)
       
       let requestBody = {}
       
@@ -36,15 +35,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
         requestBody = { region }
       }
       
-      // Log AI model endpoint call
-      const aiCall = {
-        timestamp: new Date().toISOString(),
-        endpoint: '/api/pipeline',
-        method: 'POST',
-        request: requestBody,
-        status: 'calling'
-      }
-      setAiModelCalls(prev => [...prev, aiCall])
+      
       
       const res = await fetch('/api/pipeline', {
         method: 'POST',
@@ -52,28 +43,13 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
         body: JSON.stringify(requestBody)
       })
       
-      const json = await res.json()
-      
-      // Update AI call with response
-      const updatedCall = {
-        ...aiCall,
-        status: res.ok ? 'success' : 'error',
-        response: json,
-        responseTime: Date.now() - new Date(aiCall.timestamp).getTime()
-      }
-      setAiModelCalls(prev => prev.map(call => 
-        call.timestamp === aiCall.timestamp ? updatedCall : call
-      ))
+              const json = await res.json()
       
       if (!res.ok || !json.success) throw new Error(json.error || 'Pipeline failed')
       setResult(json)
-    } catch (e) {
-      setError(e.message)
-      // Update AI call with error
-      setAiModelCalls(prev => prev.map(call => 
-        call.status === 'calling' ? { ...call, status: 'error', error: e.message } : call
-      ))
-    } finally {
+          } catch (e) {
+        setError(e.message)
+      } finally {
       setLoading(false)
     }
   }
@@ -98,9 +74,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
     }
   }
 
-  const clearAiModelCalls = () => {
-    setAiModelCalls([])
-  }
+
 
   return (
     <div className="bg-gray-900 rounded-lg border border-gray-700 p-6">
@@ -193,64 +167,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
         )}
       </div>
 
-      {/* AI Model Endpoint Calls */}
-      {aiModelCalls.length > 0 && (
-        <div className="mb-6 bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-medium text-white">🤖 AI Model Endpoint Calls</h4>
-            <button
-              onClick={clearAiModelCalls}
-              className="text-gray-400 hover:text-white text-sm"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="space-y-3">
-            {aiModelCalls.map((call, index) => (
-              <div key={index} className="bg-gray-700 rounded p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    call.status === 'success' ? 'bg-green-600 text-white' :
-                    call.status === 'error' ? 'bg-red-600 text-white' :
-                    'bg-yellow-600 text-white'
-                  }`}>
-                    {call.status === 'success' ? '✅ Success' :
-                     call.status === 'error' ? '❌ Error' : '⏳ Calling...'}
-                  </span>
-                  <span className="text-gray-400 text-xs">
-                    {new Date(call.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <p className="text-gray-300">
-                    <span className="text-gray-400">Endpoint:</span> {call.method} {call.endpoint}
-                  </p>
-                  {call.responseTime && (
-                    <p className="text-gray-300">
-                      <span className="text-gray-400">Response Time:</span> {call.responseTime}ms
-                    </p>
-                  )}
-                  {call.error && (
-                    <p className="text-red-400">
-                      <span className="text-gray-400">Error:</span> {call.error}
-                    </p>
-                  )}
-                  {call.response && call.status === 'success' && (
-                    <div className="mt-2">
-                      <details className="text-gray-300">
-                        <summary className="cursor-pointer text-blue-400">View Response</summary>
-                        <pre className="mt-2 text-xs bg-gray-800 p-2 rounded overflow-x-auto">
-                          {JSON.stringify(call.response, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {error && <p className="mt-3 text-red-300 text-sm">{error}</p>}
       
@@ -305,7 +222,10 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                         </span>
                       </p>
                       <p><span className="text-gray-400">Address:</span> 
-                        <span className="text-white ml-2">{result.location.address || 'N/A'}</span>
+                        <span className="text-white ml-2">
+                          {typeof result.location.address === 'string' ? result.location.address :
+                           result.location.address?.displayName || 'N/A'}
+                        </span>
                       </p>
                       <p><span className="text-gray-400">Agricultural Zone:</span> 
                         <span className="text-white ml-2">{result.location.agriculturalZone?.zone || 'N/A'}</span>
@@ -603,32 +523,36 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                 <div className="bg-gray-800 rounded-lg p-4">
                   <h4 className="font-medium text-white mb-3">📸 Image Analysis Data</h4>
                   <div className="space-y-3">
-                    {result.dataCollection.imageAnalysis.data?.map((image, index) => (
-                      <div key={index} className="bg-gray-700 rounded p-3">
-                        <p className="text-gray-300 mb-2">
-                          <span className="text-gray-400">Image {index + 1}:</span> 
-                          {image.type || 'Unknown type'}
-                        </p>
-                        {image.disease && image.disease.data && (
-                          <div className="ml-4">
-                            <p className="text-gray-400 text-xs">Disease Analysis:</p>
-                            {image.disease.data.results?.map((result, idx) => (
-                              <div key={idx} className="ml-4 text-xs">
-                                <span className="text-gray-300">
-                                  {result.name || 'Unknown'}: {result.confidence || 0}% confidence
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {result.dataCollection.imageAnalysis.data && Array.isArray(result.dataCollection.imageAnalysis.data) && result.dataCollection.imageAnalysis.data.length > 0 ? (
+                      result.dataCollection.imageAnalysis.data.map((image, index) => (
+                        <div key={index} className="bg-gray-700 rounded p-3">
+                          <p className="text-gray-300 mb-2">
+                            <span className="text-gray-400">Image {index + 1}:</span> 
+                            {image.type || 'Unknown type'}
+                          </p>
+                          {image.disease && image.disease.data && image.disease.data.results && Array.isArray(image.disease.data.results) && image.disease.data.results.length > 0 && (
+                            <div className="ml-4">
+                              <p className="text-gray-400 text-xs">Disease Analysis:</p>
+                              {image.disease.data.results.map((diseaseResult, idx) => (
+                                <div key={idx} className="ml-4 text-xs">
+                                  <span className="text-gray-300">
+                                    {diseaseResult.name || 'Unknown'}: {diseaseResult.confidence || 0}% confidence
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-400 text-sm">No images provided for analysis</p>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Agricultural Insights */}
-              {result.insights && (
+              {result.insights && Array.isArray(result.insights) && result.insights.length > 0 && (
                 <div className="bg-gray-800 rounded-lg p-4">
                   <h4 className="font-medium text-white mb-3">🌱 Agricultural Insights & Analysis</h4>
                   <div className="space-y-4">
@@ -661,7 +585,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                               {insight.type === 'soil_health' && (
                                 <div>
                                   <p className="text-gray-400 mb-2">Soil Conditions:</p>
-                                  {insight.data?.strengths && (
+                                  {insight.data?.strengths && Array.isArray(insight.data.strengths) && insight.data.strengths.length > 0 && (
                                     <div className="mb-2">
                                       <p className="text-green-400 text-xs mb-1">✅ Strengths:</p>
                                       <ul className="ml-4 text-gray-300">
@@ -671,7 +595,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                                       </ul>
                                     </div>
                                   )}
-                                  {insight.data?.issues && insight.data.issues.length > 0 && (
+                                  {insight.data?.issues && Array.isArray(insight.data.issues) && insight.data.issues.length > 0 && (
                                     <div>
                                       <p className="text-red-400 text-xs mb-1">⚠️ Issues:</p>
                                       <ul className="ml-4 text-gray-300">
@@ -687,7 +611,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                               {insight.type === 'crop_suitability' && (
                                 <div>
                                   <p className="text-gray-400 mb-2">Crop Recommendations:</p>
-                                  {insight.data?.bestCrops && (
+                                  {insight.data?.bestCrops && Array.isArray(insight.data.bestCrops) && insight.data.bestCrops.length > 0 && (
                                     <div className="mb-2">
                                       <p className="text-green-400 text-xs mb-1">🌟 Best Crops:</p>
                                       <div className="flex flex-wrap gap-1">
@@ -699,7 +623,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                                       </div>
                                     </div>
                                   )}
-                                  {insight.data?.goodCrops && (
+                                  {insight.data?.goodCrops && Array.isArray(insight.data.goodCrops) && insight.data.goodCrops.length > 0 && (
                                     <div>
                                       <p className="text-blue-400 text-xs mb-1">✅ Good Crops:</p>
                                       <div className="flex flex-wrap gap-1">
@@ -761,7 +685,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                               )}
 
                               {/* Factors and other data */}
-                              {insight.data?.factors && insight.data.factors.length > 0 && (
+                              {insight.data?.factors && Array.isArray(insight.data.factors) && insight.data.factors.length > 0 && (
                                 <div className="mt-3">
                                   <p className="text-gray-400 mb-1">Key Factors:</p>
                                   <ul className="ml-4 text-gray-300">
@@ -820,7 +744,7 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
               )}
 
               {/* Crop Recommendations */}
-              {result.recommendations && (
+              {result.recommendations && Array.isArray(result.recommendations) && result.recommendations.length > 0 && (
                 <div className="bg-gray-800 rounded-lg p-4">
                   <h4 className="font-medium text-white mb-3">🌾 Crop Recommendations</h4>
                   <div className="space-y-3">
@@ -884,7 +808,30 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                 <div className="bg-gray-800 rounded-lg p-4">
                   <h4 className="font-medium text-white mb-3">📋 Analysis Summary</h4>
                   <div className="bg-gray-700 rounded p-3">
-                    <p className="text-gray-300">{result.summary}</p>
+                    {typeof result.summary === 'string' ? (
+                      <p className="text-gray-300">{result.summary}</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {result.summary.keyFindings && (
+                          <div>
+                            <h5 className="text-white font-medium mb-2">🔍 Key Findings</h5>
+                            <p className="text-gray-300">{result.summary.keyFindings}</p>
+                          </div>
+                        )}
+                        {result.summary.topRecommendations && (
+                          <div>
+                            <h5 className="text-white font-medium mb-2">💡 Top Recommendations</h5>
+                            <p className="text-gray-300">{result.summary.topRecommendations}</p>
+                          </div>
+                        )}
+                        {result.summary.nextSteps && (
+                          <div>
+                            <h5 className="text-white font-medium mb-2">🚀 Next Steps</h5>
+                            <p className="text-gray-300">{result.summary.nextSteps}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -934,11 +881,16 @@ export default function AgriPipelinePanel({ region = 'kansas' }) {
                 </div>
               )}
 
-              {result.insights?.length > 0 && (
+              {result.insights?.length > 0 && result.insights[0] && (
                 <div className="bg-gray-800 rounded-lg p-4">
                   <h4 className="font-medium text-white mb-3">🔍 Top Insight</h4>
                   <div className="bg-gray-700 border border-gray-600 rounded p-3">
-                    <p className="text-gray-300">{result.insights[0].message}</p>
+                    <p className="text-gray-300">
+                      {typeof result.insights[0] === 'string' ? result.insights[0] :
+                       result.insights[0].message || 
+                       result.insights[0].type || 
+                       JSON.stringify(result.insights[0])}
+                    </p>
                   </div>
                 </div>
               )}
