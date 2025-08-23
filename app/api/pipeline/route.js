@@ -128,8 +128,9 @@ export async function POST(request) {
       // Store results in database
       storedResult = await storePipelineResults(result, region)
       
-      // Send notification to farmer
-      notificationResult = await sendFarmerNotification(result, phoneNumber)
+      // Send notification to farmer (use default phone for standard pipeline)
+      const defaultPhone = '+919322909257' // Default phone number for standard pipeline
+      notificationResult = await sendFarmerNotification(result, defaultPhone)
       
       console.log(`💾 [${requestId}] Standard pipeline results stored:`, {
         stored: !!storedResult,
@@ -168,6 +169,42 @@ export async function POST(request) {
 }
 
 // Database and notification helper functions
+async function storePipelineResults(pipelineResult, region) {
+  try {
+    const { data: record, error } = await databaseService.withRetry(async () => {
+      return await databaseService.client
+        .from('farmer_analysis_results')
+        .insert({
+          region_id: region || 'unknown',
+          pipeline_id: pipelineResult.pipelineId || `pipeline_${Date.now()}`,
+          analysis_type: 'standard_pipeline',
+          insights: pipelineResult.insights || [],
+          predictions: pipelineResult.predictions || [],
+          data_collection: {
+            weather: pipelineResult.dataCollection?.weather,
+            environmental: pipelineResult.dataCollection?.environmental,
+            imageAnalysis: pipelineResult.dataCollection?.imageAnalysis
+          },
+          alerts: pipelineResult.alerts || [],
+          recommendations: pipelineResult.recommendations || [],
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+    }, 'store_pipeline_results')
+
+    if (error) {
+      console.error('Failed to store pipeline results:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, recordId: record.id }
+  } catch (error) {
+    console.error('Database storage failed:', error)
+    return { success: false, error: error.message }
+  }
+}
+
 async function storeFarmerAnalysisResults(pipelineResult, phoneNumber) {
   try {
     const { data: record, error } = await databaseService.withRetry(async () => {
@@ -299,10 +336,10 @@ export async function GET(request) {
     let result
     
     if (farmerMode) {
-      // Check enhanced pipeline status
+      // Check enhanced pipeline status - use request coordinates or default to a generic location
       const fallbackFarmerData = {
         farmerId: 'status_check',
-        coordinates: { lat: 21.1458, lon: 79.0882 } // Default to Nagpur
+        coordinates: { lat: 0, lon: 0 } // Generic coordinates for status check
       }
       
       result = await enhancedAutomatedPipeline.executeFarmerPipeline(fallbackFarmerData)

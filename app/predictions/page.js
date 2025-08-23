@@ -33,13 +33,27 @@ export default function PredictionsPage() {
 
   const [pipelineResults, setPipelineResults] = useState(null)
   const [aiModelCalls, setAiModelCalls] = useState([])
+  const [userLocation, setUserLocation] = useState(null)
 
   useEffect(() => {
     fetchData()
+    // Get user location on component mount
+    const getUserLocation = async () => {
+      try {
+        const { locationService } = await import('../../lib/locationService')
+        const location = await locationService.getLocationWithFallback()
+        setUserLocation(location)
+      } catch (error) {
+        console.error('Failed to get user location:', error)
+      }
+    }
+    getUserLocation()
   }, [])
 
   const fetchData = async () => {
     try {
+      console.log('🤖 fetchData called, current AI calls:', aiModelCalls.length)
+      console.log('🤖 AI calls content:', aiModelCalls)
       const [predictionsRes, regionsRes, cropsRes] = await Promise.all([
         fetch('/api/predictions'),
         fetch('/api/regions'),
@@ -115,7 +129,14 @@ export default function PredictionsPage() {
         request: requestData,
         status: 'calling'
       }
-      setAiModelCalls(prev => [...prev, aiCall])
+      console.log('🤖 Adding AI call:', aiCall)
+      setAiModelCalls(prev => {
+        const newCalls = [...prev, aiCall]
+        console.log('🤖 Updated AI calls after prediction:', newCalls)
+        console.log('🤖 Previous calls count:', prev.length)
+        console.log('🤖 New calls count:', newCalls.length)
+        return newCalls
+      })
 
       const response = await fetch('/api/predictions', {
         method: 'POST',
@@ -140,8 +161,10 @@ export default function PredictionsPage() {
         throw new Error(result.error || 'Failed to generate prediction')
       }
 
-      // Refresh predictions data
+      // Refresh predictions data (but preserve AI calls)
+      const currentAiCalls = [...aiModelCalls] // Create a copy
       await fetchData()
+      setAiModelCalls(currentAiCalls) // Restore AI calls after fetchData
       
       // Show success message
       setError(null)
@@ -161,11 +184,19 @@ export default function PredictionsPage() {
       setLoading(true)
       setError(null)
 
+      // Use stored user location for pipeline analysis
+      if (!userLocation) {
+        setError('Location not available. Please allow location access.')
+        return
+      }
+      
+      console.log('📍 Using location for pipeline analysis:', userLocation)
+      
       const requestData = {
         farmerData: {
           farmerId: selectedUser || `user-${Date.now()}`,
-          coordinates: { lat: 21.1458, lon: 79.0882 },
-          address: 'Nagpur, Maharashtra',
+          coordinates: { lat: userLocation.lat, lon: userLocation.lon },
+          address: userLocation.city ? `${userLocation.city}, ${userLocation.region}` : 'Current Location',
           crops: selectedCrop ? [selectedCrop] : ['Wheat', 'Rice', 'Cotton'],
           farmSize: 5.0,
           soilType: 'Clay Loam',
@@ -184,7 +215,12 @@ export default function PredictionsPage() {
         request: requestData,
         status: 'calling'
       }
-      setAiModelCalls(prev => [...prev, aiCall])
+      console.log('🤖 Adding pipeline AI call:', aiCall)
+      setAiModelCalls(prev => {
+        const newCalls = [...prev, aiCall]
+        console.log('🤖 Updated AI calls after pipeline:', newCalls)
+        return newCalls
+      })
 
       const response = await fetch('/api/pipeline', {
         method: 'POST',
@@ -223,6 +259,7 @@ export default function PredictionsPage() {
   }
 
   const clearAiModelCalls = () => {
+    console.log('🤖 Clearing AI calls')
     setAiModelCalls([])
   }
 
@@ -246,6 +283,24 @@ export default function PredictionsPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-white mb-4">🌾 Agricultural Predictions & Analytics</h1>
           <p className="text-gray-300 text-lg">Comprehensive analysis of crop performance, weather patterns, and farming recommendations</p>
+          
+          {/* Current Location Display */}
+          <div className="mt-4 p-3 bg-gray-800 rounded-lg inline-block">
+            <p className="text-sm text-gray-300">
+              📍 Location: {userLocation ? `${userLocation.city || 'Unknown'}, ${userLocation.region || 'Unknown'}` : 'Detecting...'}
+            </p>
+            {userLocation && (
+              <p className="text-xs text-gray-400 mt-1">
+                Coordinates: {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)} 
+                <span className="ml-2">({userLocation.source})</span>
+              </p>
+            )}
+          </div>
+          
+          {/* Debug Info */}
+          <div className="mt-2 p-2 bg-gray-700 rounded text-xs">
+            <p>Debug: AI Calls: {aiModelCalls.length} | Predictions: {predictions.length}</p>
+          </div>
         </div>
 
         {/* AI Model Endpoint Calls */}
@@ -314,7 +369,7 @@ export default function PredictionsPage() {
         {/* Pipeline Analysis Panel */}
         <div className="bg-gray-800 rounded-lg p-6">
           <h2 className="text-2xl font-semibold text-white mb-4">🚀 Enhanced Pipeline Analysis</h2>
-          <AgriPipelinePanel region="nagpur" />
+          <AgriPipelinePanel region={selectedRegion || 'current'} />
         </div>
 
         {/* Pipeline Results Display */}
