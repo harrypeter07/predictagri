@@ -96,10 +96,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/image.png" type="image/png" />
-        <link rel="shortcut icon" href="/image.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/image.png" />
-        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#000000" />
         <meta name="msapplication-TileColor" content="#000000" />
         <meta name="msapplication-TileImage" content="/image.png" />
