@@ -69,7 +69,8 @@ export default function NasaPanel({ lat, lon }) {
               // If no coordinates provided, get user's location
               if (!lat || !lon) {
                 try {
-                  const { locationService } = await import('../../lib/locationService')
+                  const LocationService = await import('../../lib/locationService')
+                  const locationService = new LocationService.default()
                   const userLocation = await locationService.getLocationWithFallback()
                   finalLat = userLocation.lat
                   finalLon = userLocation.lon

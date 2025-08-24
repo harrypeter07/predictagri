@@ -21,7 +21,8 @@ export default function EnhancedFarmerAnalysis() {
     const getUserLocation = async () => {
       if (autoDetectLocation) {
         try {
-          const { locationService } = await import('../../lib/locationService')
+          const LocationService = await import('../../lib/locationService')
+          const locationService = new LocationService.default()
           const location = await locationService.getLocationWithFallback()
           setUserLocation(location)
           
